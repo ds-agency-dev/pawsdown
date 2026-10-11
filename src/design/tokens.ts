@@ -73,3 +73,17 @@ export const fonts = {
   display: 'PixelifySans-Regular',
   displayBold: 'PixelifySans-Bold',
 } as const;
+
+// Menu-preset UI (RN views over the swirl) uses the design system's CSS px as points, where one art px
+// is 3 px (tokens grid.unitPt.phone). Unlike the scene, it is not tied to the 135×240 grid.
+const menuArtPt = tokensJson.grid.unitPt.phone;
+
+export const menu = {
+  artPt: menuArtPt,
+  /** Font px per art px for pixel labels and counters (design system PixelText `px`). */
+  textPx: { label: 2, counter: 3 },
+  /** Panels glide 1 art px over 3.2 s (smooth, not the CSS step; see motion/float); the primary button glows for the last 12% of 2.4 s. */
+  float: { halfPeriodMs: 1600, liftPt: menuArtPt * tokensJson.motion.amplitudesArtPx.idleBob },
+  pulse: { restMs: 2112, glowMs: 288 },
+  minTouchPt: 44,
+} as const;

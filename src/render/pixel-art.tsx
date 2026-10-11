@@ -19,7 +19,7 @@ export const NEAREST = { filter: FilterMode.Nearest, mipmap: MipmapMode.None } a
 
 export type SpriteName = keyof typeof sprites.sprites;
 
-function toImage(bitmap: Bitmap): SkImage {
+export function toImage(bitmap: Bitmap): SkImage {
   const image = Skia.Image.MakeImage(
     { width: bitmap.width, height: bitmap.height, alphaType: AlphaType.Unpremul, colorType: ColorType.RGBA_8888 },
     Skia.Data.fromBytes(bitmap.data),
@@ -61,7 +61,7 @@ export function PixelSprite({ name, x, y, scale = 1, coat }: PixelSpriteProps) {
   return <Image image={image} x={x} y={y} width={w * scale} height={h * scale} sampling={NEAREST} />;
 }
 
-interface PixelTextProps {
+interface SceneTextProps {
   readonly text: string;
   readonly x: number;
   readonly y: number;
@@ -73,7 +73,7 @@ interface PixelTextProps {
   readonly scale?: number;
 }
 
-export function PixelText({ text, x, y, color = palette.paper, shadow, align = 'left', scale = 1 }: PixelTextProps) {
+export function SceneText({ text, x, y, color = palette.paper, shadow, align = 'left', scale = 1 }: SceneTextProps) {
   const image = useMemo(() => toImage(rasterizeText(text, color)), [text, color]);
   const shadowImage = useMemo(() => (shadow ? toImage(rasterizeText(text, shadow)) : null), [text, shadow]);
   const w = textWidth(text) * scale;
