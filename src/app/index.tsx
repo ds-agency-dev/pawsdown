@@ -1,9 +1,14 @@
-import { Text, View, StyleSheet } from "react-native";
+import { StyleSheet, Text, View } from 'react-native';
 
+import { color, fonts } from '@/design/tokens';
+import { DuskScene } from '@/render/DuskScene';
+
+// M1 spike screen: swirl + CRT full-screen, with an RN label on top to check fonts load.
 export default function Index() {
   return (
     <View style={styles.container}>
-      <Text>Edit src/app/index.tsx to edit this screen.</Text>
+      <DuskScene />
+      <Text style={styles.label}>PAWSDOWN</Text>
     </View>
   );
 }
@@ -11,7 +16,13 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: color.surfaceDeep,
+  },
+  label: {
+    fontFamily: fonts.displayBold,
+    fontSize: 36,
+    color: color.ink,
   },
 });
