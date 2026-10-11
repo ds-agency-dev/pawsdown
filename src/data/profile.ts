@@ -93,7 +93,15 @@ export async function getProfile(db: ProfileDb): Promise<Profile> {
 }
 
 /** Saves every onboarding answer in one transaction, so a half-finished setup never counts as onboarded. */
-export async function saveOnboarding(db: ProfileDb, answers: { pet: Pet; workday: Workday; switchOff: SwitchOff[] }) {
+export interface OnboardingAnswers {
+  pet: Pet;
+  workday: Workday;
+  switchOff: SwitchOff[];
+  /** Consent to anonymous usage counts (stored in settings, where it can change later). */
+  analytics: boolean;
+}
+
+export async function saveOnboarding(db: ProfileDb, answers: OnboardingAnswers) {
   const { workday, switchOff } = answers;
   const name = cleanPetName(answers.pet.name);
   if (name === null) throw new Error('Pet name is empty or too long');
@@ -105,6 +113,7 @@ export async function saveOnboarding(db: ProfileDb, answers: { pet: Pet; workday
       workday.days,
       Number(workday.nudge),
     ]);
+    await db.runAsync('UPDATE settings SET analytics = ? WHERE id = 1', [Number(answers.analytics)]);
     await db.execAsync('DELETE FROM switch_off');
     for (const topic of switchOff) await db.runAsync('INSERT INTO switch_off (topic) VALUES (?)', [topic]);
     await db.runAsync('INSERT OR REPLACE INTO pet (id, species, name, coat, created_at) VALUES (1, ?, ?, ?, ?)', [
@@ -124,7 +133,7 @@ export async function saveOnboarding(db: ProfileDb, answers: { pet: Pet; workday
 export async function clearOnboarding(db: ProfileDb) {
   await db.execAsync('BEGIN');
   try {
-    await db.execAsync('DELETE FROM pet; DELETE FROM switch_off;');
+    await db.execAsync('DELETE FROM pet; DELETE FROM switch_off; UPDATE settings SET analytics = 0 WHERE id = 1;');
     await db.runAsync('UPDATE workday SET end_minute = ?, days = ?, nudge = ? WHERE id = 1', [
       DEFAULT_WORKDAY.endMinute,
       DEFAULT_WORKDAY.days,

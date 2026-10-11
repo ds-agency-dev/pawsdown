@@ -3,12 +3,12 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { MenuPanel } from '@/components/MenuPanel';
 import { PixelButton } from '@/components/PixelButton';
-import { useDisplayFont } from '@/components/PixelText';
 import { Sprite } from '@/components/Sprite';
 import { StepFill } from '@/components/Stepped';
 import { cleanPetName } from '@/data/profile';
 import { useFinishOnboarding } from '@/data/profile-store';
 import { fonts, menu, palette } from '@/design/tokens';
+import { BulletList } from '@/onboarding/BulletList';
 import { coatFor, useDraft } from '@/onboarding/draft';
 import { OnboardingScreen } from '@/onboarding/OnboardingScreen';
 import { PetAsks } from '@/onboarding/PetAsks';
@@ -21,7 +21,6 @@ const DEAL = ['One nudge on workdays', 'Nothing on days off', 'No streaks, no gu
 export default function NudgeStep() {
   const [draft] = useDraft();
   const finishOnboarding = useFinishOnboarding();
-  const labelFont = { fontFamily: useDisplayFont() };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   // Async failures reach the root ErrorBoundary instead of leaving the user stuck on a dead button.
@@ -43,6 +42,7 @@ export default function NudgeStep() {
         pet: { species, name, coat },
         workday: { endMinute: draft.endMinute, days: draft.days, nudge },
         switchOff: [...draft.switchOff],
+        analytics: draft.analytics,
       });
     } catch (e) {
       setError(e);
@@ -51,7 +51,7 @@ export default function NudgeStep() {
 
   return (
     <OnboardingScreen
-      step={4}
+      step={5}
       footer={
         <>
           <PixelButton
@@ -79,12 +79,7 @@ export default function NudgeStep() {
         </View>
       </MenuPanel>
       <MenuPanel title="The deal" tone="mint">
-        {DEAL.map((line) => (
-          <View key={line} style={styles.dealRow}>
-            <View style={styles.bullet} />
-            <Text style={[styles.deal, labelFont]}>{line}</Text>
-          </View>
-        ))}
+        <BulletList lines={DEAL} />
       </MenuPanel>
     </OnboardingScreen>
   );
@@ -96,7 +91,4 @@ const styles = StyleSheet.create({
   previewHead: { flexDirection: 'row', justifyContent: 'space-between' },
   app: { fontFamily: fonts.uiBold, fontSize: 17, color: palette.paper },
   when: { fontFamily: fonts.ui, fontSize: 15, color: palette.smoke },
-  dealRow: { flexDirection: 'row', alignItems: 'center', gap: 3 * A },
-  bullet: { width: 3 * A, height: 3 * A, backgroundColor: palette.mint },
-  deal: { fontFamily: fonts.display, fontSize: 18, lineHeight: 24, color: palette.paper },
 });

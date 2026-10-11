@@ -11,6 +11,7 @@ const SOURCES = {
   toggleOn: require('@/assets/sounds/toggleOn.wav') as number,
   toggleOff: require('@/assets/sounds/toggleOff.wav') as number,
   blip: require('@/assets/sounds/blip.wav') as number,
+  powerOn: require('@/assets/sounds/powerOn.wav') as number,
 };
 
 export type SoundName = keyof typeof SOURCES;
@@ -53,7 +54,7 @@ export function setSoundEnabled(on: boolean) {
   enabled = on;
 }
 
-/** Plays a UI sound from the start, cutting off its previous play (they are all under 150 ms). */
+/** Plays a UI sound from the start, cutting off its previous play (all short; powerOn is the longest at ~0.6 s). */
 export function playSound(name: SoundName) {
   if (!enabled) return;
   configure()

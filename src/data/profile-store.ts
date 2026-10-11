@@ -1,7 +1,16 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useSyncExternalStore } from 'react';
 
-import { clearOnboarding, getProfile, type Pet, type Profile, type ProfileDb, saveOnboarding } from './profile';
+import {
+  clearOnboarding,
+  getProfile,
+  type OnboardingAnswers,
+  type Pet,
+  type Profile,
+  type ProfileDb,
+  saveOnboarding,
+} from './profile';
+import { loadSettings } from './settings-store';
 
 // Same shape as the settings store: loaded in database init, read synchronously by every screen.
 let current: Profile | null = null;
@@ -28,13 +37,16 @@ export async function loadProfile(db: ProfileDb) {
 }
 
 /** Writes the answers, then re-reads them, so the store only ever holds what the database accepted. */
-export async function finishOnboarding(db: ProfileDb, answers: Parameters<typeof saveOnboarding>[1]) {
+export async function finishOnboarding(db: ProfileDb, answers: OnboardingAnswers) {
   await saveOnboarding(db, answers);
+  // Settings first: loading the profile flips the root guard to the desk.
+  await loadSettings(db);
   await loadProfile(db);
 }
 
 export async function resetOnboarding(db: ProfileDb) {
   await clearOnboarding(db);
+  await loadSettings(db);
   await loadProfile(db);
 }
 
@@ -48,7 +60,7 @@ export function usePet(): Pet | null {
 
 export function useFinishOnboarding() {
   const db = useSQLiteContext();
-  return useCallback((answers: Parameters<typeof saveOnboarding>[1]) => finishOnboarding(db, answers), [db]);
+  return useCallback((answers: OnboardingAnswers) => finishOnboarding(db, answers), [db]);
 }
 
 export function useResetOnboarding() {

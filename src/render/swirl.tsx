@@ -1,7 +1,7 @@
 import { Canvas, Fill, Shader, useClock } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
 import { PixelRatio, StyleSheet, useWindowDimensions } from 'react-native';
-import { useDerivedValue, useReducedMotion } from 'react-native-reanimated';
+import { type SharedValue, useDerivedValue, useReducedMotion } from 'react-native-reanimated';
 
 import { grid, hexToRgb01, motion, palette } from '@/design/tokens';
 
@@ -29,15 +29,18 @@ export function useSceneTime() {
   return useDerivedValue(() => (reduceMotion ? 0 : clock.value / 1000));
 }
 
-/** Swirl as a Skia <Fill>, for use inside a Canvas. dim: 0 (scene) to ~0.5 (menus). */
-export function SwirlFill({ art, dim = 0 }: { readonly art: ArtGrid; readonly dim?: number }) {
+/** 0 (scene) to ~0.5 (menus); 1 is near black. A shared value animates it, e.g. the welcome warm-up. */
+export type SwirlDim = number | SharedValue<number>;
+
+/** Swirl as a Skia <Fill>, for use inside a Canvas. */
+export function SwirlFill({ art, dim = 0 }: { readonly art: ArtGrid; readonly dim?: SwirlDim }) {
   const time = useSceneTime();
   const uniforms = useDerivedValue(() => ({
     uRes: [grid.scene.w, grid.scene.h],
     uOrigin: [art.originX, art.originY],
     uUnit: art.unitPt,
     uTime: time.value * motion.swirl.speedIdle,
-    uDim: dim,
+    uDim: typeof dim === 'number' ? dim : dim.value,
     ...swirlColors,
   }));
   return (
@@ -48,7 +51,7 @@ export function SwirlFill({ art, dim = 0 }: { readonly art: ArtGrid; readonly di
 }
 
 /** Standalone swirl backdrop behind RN content (menu preset). */
-export function Swirl({ dim }: { readonly dim?: number }) {
+export function Swirl({ dim }: { readonly dim?: SwirlDim }) {
   const art = useArtGrid();
   return (
     <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">

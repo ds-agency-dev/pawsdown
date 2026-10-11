@@ -97,7 +97,8 @@ describe('settings', () => {
       screenEffect: 'full',
       haptics: true,
       sound: true,
-      analytics: true,
+      // Opt-in: off until onboarding asks.
+      analytics: false,
     });
     await updateSettings(db, { sound: false, screenEffect: 'soft' });
     expect(await getSettings(db)).toMatchObject({ sound: false, screenEffect: 'soft', haptics: true });
@@ -135,6 +136,7 @@ describe('profile', () => {
     pet: { species: 'dog', name: '  Waffles ', coat: 'spotted' },
     workday: { endMinute: 18 * 60, days: 0b0011110, nudge: true },
     switchOff: ['email', 'laptop'],
+    analytics: true,
   } as const;
 
   it('is not onboarded until the answers are saved, then reads them back', async () => {
@@ -151,6 +153,7 @@ describe('profile', () => {
       workday: answers.workday,
       switchOff: ['email', 'laptop'],
     });
+    expect(await getSettings(db)).toMatchObject({ analytics: true });
   });
 
   it('saves nothing when any answer is rejected', async () => {
@@ -159,6 +162,7 @@ describe('profile', () => {
     const badDays = { ...answers, workday: { ...answers.workday, days: 0 }, switchOff: [...answers.switchOff] };
     await expect(saveOnboarding(db, badDays)).rejects.toThrow();
     expect(await getProfile(db)).toMatchObject({ pet: null, switchOff: [] });
+    expect(await getSettings(db)).toMatchObject({ analytics: false });
     await expect(saveOnboarding(db, { ...badDays, pet: { ...answers.pet, coat: 'tabby' } })).rejects.toThrow(/coat/);
     await expect(saveOnboarding(db, { ...badDays, pet: { ...answers.pet, name: 'x'.repeat(13) } })).rejects.toThrow();
   });

@@ -107,6 +107,43 @@ export const menu = {
   cycler: { popScale: 1.15 },
   pick: { liftPt: 3 * menuArtPt, kickDeg: -3, popScale: 1.08, stampDeg: 8, stampPopScale: 1.6 },
   minTouchPt: 44,
+  /**
+   * Welcome screen CRT power-on, in ms from mount. Eased timings, no springs: hardware switching on shouldn't
+   * wobble. A dot stretches into the beam, the picture opens out of it overexposed while the swirl warms up,
+   * the pets hop in, the title stamps letter by letter, and the button drops in last. A tap skips to the end.
+   */
+  powerOn: {
+    dotAtMs: 120,
+    beamMs: 220,
+    /** Matches the thunk in powerOn.wav (260 ms in, which starts at dotAtMs). */
+    thunkMs: 260,
+    openAtMs: 380,
+    openMs: 240,
+    flashOpacity: 0.55,
+    flashMs: 420,
+    warmFromDim: 0.9,
+    warmMs: 1000,
+    petAtMs: [560, 660],
+    /** The hop lands at 1, then squashes until `hopEnd`. */
+    hopMs: 300,
+    hopEnd: 1.3,
+    hopFromPt: 6 * menuArtPt,
+    hopPeakPt: 4 * menuArtPt,
+    squash: 0.15,
+    titleAtMs: 780,
+    letterMs: 60,
+    letterPopScale: 1.5,
+    titlePopScale: 1.06,
+    titlePopMs: 160,
+    taglineAtMs: 1300,
+    fadeMs: 300,
+    footerAtMs: 1420,
+    footerMs: 180,
+    footerDropPt: 5 * menuArtPt,
+    /** Each pet blinks on its own period so they never blink together. */
+    blinkEveryMs: [3400, 4700],
+    blinkMs: 140,
+  },
 } as const;
 
 /** UI sounds are a garnish under the haptics: quiet, and silent when the ringer switch is off. */

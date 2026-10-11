@@ -12,6 +12,7 @@ export interface Draft {
   // Kept per species so flipping between cat and dog never loses a typed name or picked coat.
   coats: Readonly<Record<PetKind, string>>;
   names: Readonly<Record<PetKind, string>>;
+  analytics: boolean;
 }
 
 const INITIAL: Draft = {
@@ -21,6 +22,7 @@ const INITIAL: Draft = {
   species: null,
   coats: { cat: 'tabby', dog: 'golden' },
   names: DEFAULT_PET_NAMES,
+  analytics: false,
 };
 
 type DraftContextValue = readonly [Draft, (update: (draft: Draft) => Draft) => void];

@@ -78,6 +78,11 @@ export const MIGRATIONS: readonly string[] = [
     topic TEXT PRIMARY KEY CHECK (topic IN ('chat', 'email', 'tasks', 'meetings', 'laptop', 'weekend'))
   );
   `,
+  `
+  -- Analytics is opt-in, asked during onboarding. The settings row always exists, so v1's column default never
+  -- applies again; this turns it off for anyone who hasn't been asked yet.
+  UPDATE settings SET analytics = 0;
+  `,
 ];
 
 /**

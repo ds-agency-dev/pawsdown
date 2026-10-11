@@ -10,7 +10,7 @@ import { PixelText } from '@/components/PixelText';
 import { menu } from '@/design/tokens';
 
 const A = menu.artPt;
-export const ONBOARDING_STEPS = 4;
+export const ONBOARDING_STEPS = 5;
 
 interface OnboardingScreenProps {
   readonly step: number;

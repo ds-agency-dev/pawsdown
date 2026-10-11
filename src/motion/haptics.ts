@@ -19,6 +19,12 @@ export function tapHaptic() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(report);
 }
 
+/** Heavier knock for a hardware moment, e.g. the welcome screen's CRT switching on. */
+export function thudHaptic() {
+  if (!enabled) return;
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(report);
+}
+
 /** Selection tick for switching between options, e.g. tabs. */
 export function selectHaptic() {
   if (!enabled) return;

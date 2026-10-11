@@ -41,7 +41,7 @@ export default function PetStep() {
           label="That's me"
           full
           variant={ready ? 'primary' : 'disabled'}
-          onPress={() => router.push('/onboarding/nudge')}
+          onPress={() => router.push('/onboarding/analytics')}
         />
       }>
       <SpeechBubble text="Cat or dog? Pick one of us, then give me a name." typing tail="bottom" wrap={24} />

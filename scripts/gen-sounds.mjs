@@ -87,6 +87,14 @@ const thump = mix(
   { s: lowpass(burst({ ms: 35, amp: 0.25 }), 2500) },
 );
 
+// The welcome CRT: a low hum and faint whine rising for 260 ms, then the picture's thunk and a crackle of static.
+const powerOn = mix(
+  { s: lowpass(tone({ wave: triangle, from: 55, to: 110, ms: 300, amp: 0.3, attackMs: 40, decay: 0.5 }), 900) },
+  { at: 40, s: tone({ wave: sine, from: 6000, to: 7800, ms: 260, amp: 0.025, attackMs: 60, decay: 1 }) },
+  { at: 260, s: tone({ wave: sine, from: 130, to: 42, ms: 220, amp: 0.7, attackMs: 1, decay: 4 }) },
+  { at: 260, s: lowpass(burst({ ms: 300, amp: 0.22 }), 3200) },
+);
+
 const SOUNDS = {
   // Button press: a soft downward chirp.
   tap: lowpass(tone({ wave: triangle, from: 880, to: 660, ms: 45, amp: 0.35 }), 6000),
@@ -100,6 +108,7 @@ const SOUNDS = {
   toggleOff: lowpass(tone({ wave: pulse, from: 784, to: 523, ms: 60, amp: 0.2, decay: 3 }), 3500),
   // The pet "typing" a character: very short and quiet, it repeats every 25 ms.
   blip: lowpass(tone({ wave: pulse, from: 520, ms: 28, amp: 0.14, decay: 4 }), 2500),
+  powerOn,
 };
 
 mkdirSync(OUT, { recursive: true });
