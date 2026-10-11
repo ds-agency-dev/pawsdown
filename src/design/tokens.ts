@@ -53,6 +53,9 @@ export const motion = {
   swirl: tokensJson.motion.swirl,
 } as const;
 
+// Design system README: menu screens dim the swirl "0.35 to 0.5"; pick the middle.
+export const menuSwirlDim = 0.42;
+
 export const sequence = tokensJson.sequence;
 
 export const crt = {

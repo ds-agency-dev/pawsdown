@@ -3,7 +3,7 @@
  */
 import CanvasKitInit from 'canvaskit-wasm/bin/full/canvaskit';
 
-import { CRT_SKSL, SWIRL_SKSL } from '../sksl';
+import { CRT_SKSL, OVERLAY_SKSL, SWIRL_SKSL } from '../sksl';
 
 // Compiles the SkSL with the same Skia compiler (via CanvasKit) so syntax errors fail CI, not the phone.
 describe('SkSL shaders', () => {
@@ -33,5 +33,9 @@ describe('SkSL shaders', () => {
 
   it('compiles the CRT pass', () => {
     expect(compile(CRT_SKSL)).toEqual([]);
+  });
+
+  it('compiles the menu overlay', () => {
+    expect(compile(OVERLAY_SKSL)).toEqual([]);
   });
 });

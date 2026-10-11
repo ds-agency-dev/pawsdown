@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
@@ -26,6 +27,9 @@ export default function Index() {
         <PixelText text={pet.coat.key.replace('.', ' ')} x={68} y={212} color={palette.paper} shadow={palette.night} align="center" />
       </DuskScene>
       <Text style={styles.hint}>Tap for the next coat</Text>
+      <Link href="/menu-spike" style={styles.link}>
+        Menu preset spike
+      </Link>
     </Pressable>
   );
 }
@@ -41,6 +45,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.ui,
     fontSize: 17,
     color: color.ink,
+    marginBottom: 16,
+  },
+  link: {
+    fontFamily: fonts.uiBold,
+    fontSize: 17,
+    color: color.accent,
     marginBottom: 48,
+    padding: 8,
   },
 });

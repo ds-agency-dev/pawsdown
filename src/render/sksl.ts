@@ -88,3 +88,33 @@ half4 main(float2 xy) {
   return half4(half3(col * uBright), 1.0);
 }
 `;
+
+// Menu-preset overlay drawn over RN views: outputs premultiplied night with alpha, never samples
+// content. Scanlines: 1pt dark row every 3pt. Tube: rounded inset frame (opaque night outside)
+// plus an inner shadow approximating CSS `inset 0 0 blur spread`.
+export const OVERLAY_SKSL = `
+uniform float2 uRes;
+uniform float3 uNight;
+uniform float uScanAlpha;
+uniform float uInset;
+uniform float uRadius;
+uniform float uFrame;
+uniform float uShadowAlpha;
+uniform float uShadowSpread;
+uniform float uShadowBlur;
+
+float sdRoundRect(float2 p, float2 halfSize, float r) {
+  float2 q = abs(p) - halfSize + r;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+
+half4 main(float2 xy) {
+  float scan = step(2.0, mod(xy.y, 3.0)) * uScanAlpha;
+  float2 halfSize = (uRes - 2.0 * uInset) * 0.5;
+  float inside = -sdRoundRect(xy - uRes * 0.5, halfSize, uRadius);
+  float shadow = uShadowAlpha * (1.0 - smoothstep(-0.5 * uShadowBlur, 0.5 * uShadowBlur, inside - uShadowSpread));
+  float frame = uFrame * (1.0 - smoothstep(-0.5, 0.5, inside));
+  float a = 1.0 - (1.0 - scan) * (1.0 - shadow) * (1.0 - frame);
+  return half4(half3(uNight * a), a);
+}
+`;
