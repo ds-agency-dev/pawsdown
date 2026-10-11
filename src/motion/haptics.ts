@@ -10,3 +10,8 @@ function report(error: unknown) {
 export function tapHaptic() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(report);
 }
+
+/** Selection tick for switching between options, e.g. tabs. */
+export function selectHaptic() {
+  Haptics.selectionAsync().catch(report);
+}

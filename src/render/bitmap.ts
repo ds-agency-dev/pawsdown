@@ -71,7 +71,8 @@ export function rasterizeSprite(
 
 export const GLYPH_W = 5;
 export const GLYPH_H = 7;
-const ADVANCE = GLYPH_W + 1;
+/** Glyph width plus one font px of letter spacing. */
+export const ADVANCE = GLYPH_W + 1;
 
 export function textWidth(text: string): number {
   return text.length ? text.length * ADVANCE - 1 : 0;

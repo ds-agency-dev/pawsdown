@@ -85,5 +85,29 @@ export const menu = {
   /** Panels glide 1 art px over 3.2 s (smooth, not the CSS step; see motion/float); the primary button glows for the last 12% of 2.4 s. */
   float: { halfPeriodMs: 1600, liftPt: menuArtPt * tokensJson.motion.amplitudesArtPx.idleBob },
   pulse: { restMs: 2112, glowMs: 288 },
+  /**
+   * Choice cards sway between two tilts (deg) at rest, one preset per `index % 3` so a row never sways in step
+   * (design CSS dcSway0-2, ease-in-out). Picking lifts the card 3 art px and kicks it from a tilt and pop.
+   */
+  sway: [
+    { fromDeg: -1.5, toDeg: -0.5, periodMs: 4800 },
+    { fromDeg: 1, toDeg: 2, periodMs: 5400 },
+    { fromDeg: -0.5, toDeg: 0.5, periodMs: 4200 },
+  ],
+  /** The active tab's icon hops this many points as it is picked. */
+  tabs: { hopPt: 2 * menuArtPt },
+  /** A pip that lights up pops in from this scale. */
+  pips: { popScale: 1.6 },
+  /** The pet types one character per `charMs` and blips every `blipEvery` characters (every 2nd still caused a
+   * faint hitch on device); the cursor blinks on/off each `blinkMs`. */
+  speech: { charMs: 25, blipEvery: 3, blinkMs: 500 },
+  /** The toggle knob stretches this much mid-travel and squashes as the spring lands past its stop. */
+  toggle: { stretch: 0.3 },
+  /** Each OptionCycler step pops the value in from this scale on the snap spring. */
+  cycler: { popScale: 1.15 },
+  pick: { liftPt: 3 * menuArtPt, kickDeg: -3, popScale: 1.08, stampDeg: 8, stampPopScale: 1.6 },
   minTouchPt: 44,
 } as const;
+
+/** UI sounds are a garnish under the haptics: quiet, and silent when the ringer switch is off. */
+export const sound = { volume: 0.5 } as const;

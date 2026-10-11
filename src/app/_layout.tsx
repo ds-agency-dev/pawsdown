@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { preloadSounds } from '@/audio/sounds';
 import { color, fonts } from '@/design/tokens';
 
 export { ErrorBoundary } from 'expo-router';
@@ -17,6 +18,8 @@ export default function RootLayout() {
     [fonts.display]: require('@/assets/fonts/PixelifySans-Regular.ttf'),
     [fonts.displayBold]: require('@/assets/fonts/PixelifySans-Bold.ttf'),
   });
+
+  useEffect(preloadSounds, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) SplashScreen.hide();

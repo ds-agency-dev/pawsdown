@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { menu, motion, palette } from '@/design/tokens';
-import { tapHaptic } from '@/motion/haptics';
+import { tapFeedback } from '@/motion/feedback';
 import { useStepLoop } from '@/motion/step-loop';
 
 import { BUTTON_VARIANTS, type ButtonVariant } from './button-variants';
@@ -54,7 +54,7 @@ export function PixelButton({ label, variant = 'primary', pressed = false, full 
       disabled={disabled}
       onPressIn={() => {
         moveTo(1);
-        tapHaptic();
+        tapFeedback();
       }}
       onPressOut={() => moveTo(rest)}
       onPress={onPress}

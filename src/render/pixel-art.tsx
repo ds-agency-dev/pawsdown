@@ -32,7 +32,7 @@ export function toImage(bitmap: Bitmap): SkImage {
 // Sprites × coats is a small closed set, so images live for the app's lifetime.
 const spriteCache = new Map<string, SkImage>();
 
-function spriteImage(name: SpriteName, coatKey: string, recolor: CodeMap): SkImage {
+export function spriteImage(name: SpriteName, coatKey: string, recolor: CodeMap): SkImage {
   const key = `${name}:${coatKey}`;
   let image = spriteCache.get(key);
   if (!image) {
