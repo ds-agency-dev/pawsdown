@@ -18,7 +18,7 @@ const swirlColors = {
 const frameColor = hexToRgb01(palette.night);
 
 interface DuskSceneProps {
-  /** Skia content drawn on the scene grid; it gets the full CRT treatment. */
+  /** Skia content in scene art px (0..135 × 0..240); it gets the full CRT treatment. */
   readonly children?: ReactNode;
 }
 
@@ -67,7 +67,14 @@ export function DuskScene({ children }: DuskSceneProps) {
         <Fill>
           <Shader source={swirlEffect} uniforms={swirlUniforms} />
         </Fill>
-        {children}
+        <Group
+          transform={[
+            { translateX: art.originX * art.unitPt },
+            { translateY: art.originY * art.unitPt },
+            { scale: art.unitPt },
+          ]}>
+          {children}
+        </Group>
       </Group>
     </Canvas>
   );
