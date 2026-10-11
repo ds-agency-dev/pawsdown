@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { type ReactNode, useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { useSetting } from '@/data/settings-store';
 import { menu, palette } from '@/design/tokens';
 import { typeFeedback } from '@/motion/feedback';
 import { useStepLoop } from '@/motion/step-loop';
@@ -36,12 +37,55 @@ interface SpeechBubbleProps {
   readonly px?: number;
 }
 
+/** The pet talking. Under Easy read the whole line shows at once: typing is a per-glyph reveal of bitmap text. */
+export function SpeechBubble(props: SpeechBubbleProps) {
+  return useSetting('easyRead') ? <EasyBubble {...props} /> : <TypedBubble {...props} />;
+}
+
+function EasyBubble({ text, tail = 'left', wrap = 17, px = 2 }: SpeechBubbleProps) {
+  return (
+    <BubbleFrame tail={tail} text={text}>
+      <PixelText text={text} px={px} wrap={wrap} color="paper" decorative />
+    </BubbleFrame>
+  );
+}
+
+interface BubbleFrameProps {
+  readonly text: string;
+  readonly tail: 'left' | 'bottom';
+  readonly children: ReactNode;
+  readonly onPress?: () => void;
+}
+
+// Dark rather than the design's paper bubble: no large light surfaces on purple (DECISIONS).
+function BubbleFrame({ text, tail, children, onPress }: BubbleFrameProps) {
+  return (
+    <Pressable
+      style={styles.root}
+      disabled={!onPress}
+      onPress={onPress}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={text}>
+      <View style={styles.box}>
+        <StepFill color="night" />
+        <View style={styles.face}>
+          <StepFill color="dusk" />
+          {children}
+        </View>
+      </View>
+      <View style={tail === 'left' ? styles.tailLeft : styles.tailBottom} pointerEvents="none">
+        <View style={tail === 'left' ? styles.tailLeftFace : styles.tailBottomFace} />
+      </View>
+    </Pressable>
+  );
+}
+
 /**
- * The pet talking. Dark rather than the design's paper bubble: no large light surfaces on purple (DECISIONS).
- * Lines are laid out at full length from the start and revealed by clipping on the UI thread, so the bubble
+ * Bitmap speech. Lines are laid out at full length from the start and revealed by clipping on the UI thread, so the bubble
  * never reflows and typing never re-renders React.
  */
-export function SpeechBubble({ text, typing = false, tail = 'left', wrap = 17, px = 2 }: SpeechBubbleProps) {
+function TypedBubble({ text, typing = false, tail = 'left', wrap = 17, px = 2 }: SpeechBubbleProps) {
   const reduceMotion = useReducedMotion();
   const lines = useMemo(() => wrapText(text, wrap), [text, wrap]);
   const starts = useMemo(() => lines.map((_, i) => lines.slice(0, i).reduce((n, l) => n + l.length, 0)), [lines]);
@@ -81,35 +125,27 @@ export function SpeechBubble({ text, typing = false, tail = 'left', wrap = 17, p
   });
 
   return (
-    <Pressable
-      style={styles.root}
-      disabled={!animate}
-      onPress={() => {
-        cancelAnimation(shown);
-        shown.set(total);
-      }}
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={text}>
-      <View style={styles.box}>
-        <StepFill color="night" />
-        <View style={styles.face}>
-          <StepFill color="dusk" />
-          {lines.map((line, i) => (
-            <RevealLine key={i} text={line} start={starts[i] ?? 0} shown={shown} px={px} />
-          ))}
-          {typing && (
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.cursor, { width: GLYPH_W * px, height: GLYPH_H * px }, cursorStyle]}
-            />
-          )}
-        </View>
-      </View>
-      <View style={tail === 'left' ? styles.tailLeft : styles.tailBottom} pointerEvents="none">
-        <View style={tail === 'left' ? styles.tailLeftFace : styles.tailBottomFace} />
-      </View>
-    </Pressable>
+    <BubbleFrame
+      tail={tail}
+      text={text}
+      onPress={
+        animate
+          ? () => {
+              cancelAnimation(shown);
+              shown.set(total);
+            }
+          : undefined
+      }>
+      {lines.map((line, i) => (
+        <RevealLine key={i} text={line} start={starts[i] ?? 0} shown={shown} px={px} />
+      ))}
+      {typing && (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.cursor, { width: GLYPH_W * px, height: GLYPH_H * px }, cursorStyle]}
+        />
+      )}
+    </BubbleFrame>
   );
 }
 

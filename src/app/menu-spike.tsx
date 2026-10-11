@@ -13,6 +13,9 @@ import { MenuPanel } from '@/components/MenuPanel';
 import { MenuScreen } from '@/components/MenuScreen';
 import { PixelButton } from '@/components/PixelButton';
 import { PixelPanel } from '@/components/PixelPanel';
+import { useDisplayFont } from '@/components/PixelText';
+import type { ScreenEffect, Settings } from '@/data/settings';
+import { useChangeSettings, useSetting } from '@/data/settings-store';
 import { color, fonts, menu, palette } from '@/design/tokens';
 import { ALL_COATS } from '@/render/bitmap';
 
@@ -23,13 +26,20 @@ export default function MenuSpike() {
   const [evenings, setEvenings] = useState(4);
   const [pet, setPet] = useState<'cat' | 'dog' | null>(null);
   const [boundary, setBoundary] = useState<number | null>(null);
-  const [effect, setEffect] = useState(0);
   const [coat, setCoat] = useState(0);
   const [nudge, setNudge] = useState(5);
-  const [haptics, setHaptics] = useState(true);
+  const haptics = useSetting('haptics');
+  const sound = useSetting('sound');
+  const easyRead = useSetting('easyRead');
+  const effect = EFFECTS.indexOf(useSetting('screenEffect'));
+  const labelFont = { fontFamily: useDisplayFont() };
+  const changeSettings = useChangeSettings();
+  const save = (patch: Partial<Settings>) =>
+    changeSettings(patch).catch((error: unknown) => console.error('Saving settings failed', error));
+  const toggle = (key: 'haptics' | 'sound' | 'easyRead', on: boolean) => save({ [key]: !on });
+  const stepEffect = (dir: number) => save({ screenEffect: EFFECTS[cycle(effect, dir, EFFECTS.length)] ?? 'full' });
   const [line, setLine] = useState(0);
   const [tab, setTab] = useState<TabKey>('desk');
-  const [easyRead, setEasyRead] = useState(false);
 
   return (
     <MenuScreen>
@@ -52,8 +62,8 @@ export default function MenuSpike() {
           <OptionCycler
             label="Screen effect"
             value={EFFECTS[effect] ?? ''}
-            onPrev={() => setEffect((i) => cycle(i, -1, EFFECTS.length))}
-            onNext={() => setEffect((i) => cycle(i, 1, EFFECTS.length))}
+            onPrev={() => stepEffect(-1)}
+            onNext={() => stepEffect(1)}
           />
           <OptionCycler
             label="Coat"
@@ -62,12 +72,16 @@ export default function MenuSpike() {
             onNext={() => setCoat((i) => cycle(i, 1, COAT_NAMES.length))}
           />
           <View style={styles.toggleRow}>
-            <Text style={styles.rowLabel}>Haptics</Text>
-            <PixelToggle label="Haptics" on={haptics} onToggle={() => setHaptics((v) => !v)} />
+            <Text style={[styles.rowLabel, labelFont]}>Haptics</Text>
+            <PixelToggle label="Haptics" on={haptics} onToggle={() => toggle('haptics', haptics)} />
           </View>
           <View style={styles.toggleRow}>
-            <Text style={styles.rowLabel}>Easy read</Text>
-            <PixelToggle label="Easy read" on={easyRead} onToggle={() => setEasyRead((v) => !v)} />
+            <Text style={[styles.rowLabel, labelFont]}>Sound</Text>
+            <PixelToggle label="Sound" on={sound} onToggle={() => toggle('sound', sound)} />
+          </View>
+          <View style={styles.toggleRow}>
+            <Text style={[styles.rowLabel, labelFont]}>Easy read</Text>
+            <PixelToggle label="Easy read" on={easyRead} onToggle={() => toggle('easyRead', easyRead)} />
           </View>
           <OptionCycler
             label="Nudge time"
@@ -140,7 +154,7 @@ export default function MenuSpike() {
           />
         </MenuPanel>
         <MenuPanel title="Episode 2">
-          <Text style={styles.rowLabel}>{`Panel ${Math.min(evenings, 5)} of 5`}</Text>
+          <Text style={[styles.rowLabel, labelFont]}>{`Panel ${Math.min(evenings, 5)} of 5`}</Text>
           <Pips total={5} filled={Math.min(evenings, 5)} />
           <Pips total={12} filled={2} size={2 * menu.artPt} />
           <PixelButton label="Reset panels" variant="quiet" onPress={() => setEvenings(0)} />
@@ -163,7 +177,7 @@ const LINES = [
   'Good. Now one win from today.',
   'Laptop closed. I will keep watch.',
 ];
-const EFFECTS = ['Full', 'Soft', 'Off'];
+const EFFECTS: readonly ScreenEffect[] = ['full', 'soft', 'off'];
 const COAT_NAMES = ALL_COATS.map(({ coat }) => coat.key.split('.')[1] ?? coat.key);
 
 function cycle(i: number, step: number, length: number): number {

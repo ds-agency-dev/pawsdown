@@ -1,10 +1,12 @@
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { preloadSounds } from '@/audio/sounds';
+import { DATABASE_NAME, initDatabase } from '@/data/db';
 import { color, fonts } from '@/design/tokens';
 
 export { ErrorBoundary } from 'expo-router';
@@ -29,10 +31,11 @@ export default function RootLayout() {
   if (fontError) throw fontError;
   if (!fontsLoaded) return null;
 
+  // A failed open or migration rethrows into the root ErrorBoundary rather than running on a bad schema.
   return (
-    <>
+    <SQLiteProvider databaseName={DATABASE_NAME} onInit={initDatabase}>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.surfaceDeep } }} />
-    </>
+    </SQLiteProvider>
   );
 }

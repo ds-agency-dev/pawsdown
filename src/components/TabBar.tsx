@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useSetting } from '@/data/settings-store';
 import { ICONS } from '@/design/icons';
 import { menu, motion, palette } from '@/design/tokens';
 import { selectFeedback } from '@/motion/feedback';
@@ -50,6 +51,8 @@ interface TabBarProps {
  * and the episode player so the ritual has no exits. The lamp bar slides to the picked tab and its icon hops.
  */
 export function TabBar({ active, onSelect }: TabBarProps) {
+  // Easy read labels have no static metrics, so tabs fall back to even slots.
+  const even = useSetting('easyRead');
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const index = TABS.findIndex((t) => t.key === active);
@@ -64,8 +67,9 @@ export function TabBar({ active, onSelect }: TabBarProps) {
   // tabs (mid-spring) it moves linearly from one centre to the next.
   const barStyle = useAnimatedStyle(() => {
     const w = (rowWidth.value / TABS.length) * 0.4;
-    const spare = (rowWidth.value - CONTENT_SUM) / TABS.length;
     const s = slot.value;
+    if (even) return { width: w, transform: [{ translateX: (s + 0.5) * (rowWidth.value / TABS.length) - w / 2 }] };
+    const spare = (rowWidth.value - CONTENT_SUM) / TABS.length;
     const i0 = Math.min(Math.max(Math.floor(s), 0), TABS.length - 1);
     const i1 = Math.min(i0 + 1, TABS.length - 1);
     const c0 = FIXED_CENTRE[i0] ?? 0;
@@ -82,7 +86,7 @@ export function TabBar({ active, onSelect }: TabBarProps) {
           <Tab
             key={tab.key}
             tab={tab}
-            width={CONTENT[i] ?? 0}
+            width={even ? 0 : (CONTENT[i] ?? 0)}
             on={tab.key === active}
             onPress={() => {
               if (tab.key === active) return;

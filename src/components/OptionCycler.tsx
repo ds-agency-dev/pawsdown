@@ -14,7 +14,7 @@ import { fonts, menu, motion, palette } from '@/design/tokens';
 import { selectFeedback } from '@/motion/feedback';
 
 import { Icon } from './Icon';
-import { PixelText } from './PixelText';
+import { PixelText, useDisplayFont } from './PixelText';
 import { StepFill } from './Stepped';
 
 const A = menu.artPt;
@@ -65,6 +65,7 @@ function Arrow({ icon, scale, label, onPress }: ArrowProps) {
 
 /** A value stepped through with arrows, like a game's options menu. For 2 to 6 known values. */
 export function OptionCycler({ label, value, size = 'm', onPrev, onNext }: OptionCyclerProps) {
+  const fontFamily = useDisplayFont();
   const big = size === 'l';
   const reduceMotion = useReducedMotion();
   const pop = useSharedValue(1);
@@ -82,7 +83,7 @@ export function OptionCycler({ label, value, size = 'm', onPrev, onNext }: Optio
   return (
     <View style={big ? styles.big : styles.row}>
       {!big && (
-        <Text style={styles.label} importantForAccessibility="no" accessibilityElementsHidden>
+        <Text style={[styles.label, { fontFamily }]} importantForAccessibility="no" accessibilityElementsHidden>
           {label}
         </Text>
       )}

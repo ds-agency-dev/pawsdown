@@ -18,7 +18,7 @@ export type SoundName = keyof typeof SOURCES;
 // One player per sound for the app's lifetime: they are tiny, and re-creating them per press adds latency.
 const players: Partial<Record<SoundName, AudioPlayer>> = {};
 let ready: Promise<void> | null = null;
-// Replaced by the persisted Sound setting in M3.
+// Mirrors the Sound setting (settings store).
 let enabled = true;
 
 function report(error: unknown) {
