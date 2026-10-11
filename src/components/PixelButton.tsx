@@ -25,11 +25,25 @@ interface PixelButtonProps {
   readonly size?: 'm' | 's';
   /** Glow every 2.4 s: the screen's one primary action. */
   readonly pulse?: boolean;
+  /** For toggle keys (weekdays): VoiceOver reads it as selected. */
+  readonly selected?: boolean;
+  /** Spoken instead of the label when the label is an abbreviation, e.g. "Monday" for "M". */
+  readonly accessibilityLabel?: string;
   readonly onPress?: () => void;
 }
 
 /** Stepped corners, night outline, a colored underside the face drops onto with the snap spring. */
-export function PixelButton({ label, variant = 'primary', pressed = false, full = false, size = 'm', pulse = false, onPress }: PixelButtonProps) {
+export function PixelButton({
+  label,
+  variant = 'primary',
+  pressed = false,
+  full = false,
+  size = 'm',
+  pulse = false,
+  selected,
+  accessibilityLabel,
+  onPress,
+}: PixelButtonProps) {
   const style = BUTTON_VARIANTS[variant];
   const disabled = variant === 'disabled';
   const rest = disabled || pressed ? 1 : 0;
@@ -60,8 +74,8 @@ export function PixelButton({ label, variant = 'primary', pressed = false, full 
       onPress={onPress}
       hitSlop={A}
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}>
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled, selected }}>
       <View style={styles.body}>
         <StepFill color="night" />
         {style.underside && <View style={[styles.underside, { backgroundColor: palette[style.underside] }]} />}

@@ -5,7 +5,7 @@ export interface MigrationDb {
 }
 
 /** Text limits the UI enforces; the schema repeats them so bad data can never land. */
-export const limits = { cardChars: 40, winChars: 60 } as const;
+export const limits = { cardChars: 40, winChars: 60, petNameChars: 12 } as const;
 
 /**
  * Append-only: a shipped migration is never edited, only followed by a new one. Entry `i` takes the database from
@@ -51,6 +51,31 @@ export const MIGRATIONS: readonly string[] = [
     position INTEGER NOT NULL CHECK (position BETWEEN 0 AND 2),
     text TEXT NOT NULL CHECK (length(text) BETWEEN 1 AND ${limits.cardChars}),
     UNIQUE (evening_id, position)
+  );
+  `,
+  `
+  -- Nothing wrote pet before onboarding, so rebuilding it to cap the name loses no data.
+  DROP TABLE pet;
+  CREATE TABLE pet (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    species TEXT NOT NULL CHECK (species IN ('cat', 'dog')),
+    name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND ${limits.petNameChars}),
+    coat TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  -- end_minute is minutes after local midnight in 15-minute steps; days is a bitmask, bit 0 = Sunday (Date#getDay).
+  CREATE TABLE workday (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    end_minute INTEGER NOT NULL DEFAULT 1050 CHECK (end_minute BETWEEN 0 AND 1425 AND end_minute % 15 = 0),
+    days INTEGER NOT NULL DEFAULT 62 CHECK (days BETWEEN 1 AND 127),
+    nudge INTEGER NOT NULL DEFAULT 0 CHECK (nudge IN (0, 1))
+  );
+  INSERT INTO workday (id) VALUES (1);
+
+  -- What's hardest to switch off; shapes the boundary-move suggestions.
+  CREATE TABLE switch_off (
+    topic TEXT PRIMARY KEY CHECK (topic IN ('chat', 'email', 'tasks', 'meetings', 'laptop', 'weekend'))
   );
   `,
 ];

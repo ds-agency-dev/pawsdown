@@ -1,4 +1,4 @@
-// Dusk 5×7 bitmap font, generated from the starter kit's engine/dusk-scene.js GLYPHS table.
+// Dusk 5×7 bitmap font, generated from the starter kit's engine/dusk-scene.js GLYPHS table, plus an apostrophe added here.
 // Rows top to bottom; '#' = ink. Uppercase only; unknown characters render as '?'.
 export const GLYPHS: Readonly<Record<string, readonly string[]>> = {
   "A": ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
@@ -41,6 +41,7 @@ export const GLYPHS: Readonly<Record<string, readonly string[]>> = {
   ",": ['.....', '.....', '.....', '.....', '.##..', '..#..', '.#...'],
   ":": ['.....', '.##..', '.##..', '.....', '.##..', '.##..', '.....'],
   "!": ['..#..', '..#..', '..#..', '..#..', '..#..', '.....', '..#..'],
+  "'": ['..#..', '..#..', '.#...', '.....', '.....', '.....', '.....'],
   "?": ['.###.', '#...#', '....#', '...#.', '..#..', '.....', '..#..'],
   "-": ['.....', '.....', '.....', '.###.', '.....', '.....', '.....'],
   "+": ['.....', '..#..', '..#..', '#####', '..#..', '..#..', '.....'],

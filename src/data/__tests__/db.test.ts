@@ -2,6 +2,7 @@ import { setSoundEnabled } from '@/audio/sounds';
 import { setHapticsEnabled } from '@/motion/haptics';
 
 import { limits, migrate, MIGRATIONS } from '../migrations';
+import { getProfile, parsePet, parseWorkday, saveOnboarding } from '../profile';
 import { getSettings, parseSettings, updateSettings } from '../settings';
 import { changeSettings, loadSettings } from '../settings-store';
 
@@ -11,6 +12,7 @@ jest.mock('@/motion/haptics', () => ({ setHapticsEnabled: jest.fn() }));
 // Node's built-in SQLite stands in for expo-sqlite; only the methods the data layer uses are adapted.
 interface NodeStatement {
   get(...params: unknown[]): unknown;
+  all(...params: unknown[]): unknown[];
   run(...params: unknown[]): unknown;
 }
 interface NodeDatabase {
@@ -26,6 +28,7 @@ function openTestDb() {
     raw,
     execAsync: async (sql: string) => raw.exec(sql),
     getFirstAsync: async <T>(sql: string) => (raw.prepare(sql).get() as T | undefined) ?? null,
+    getAllAsync: async <T>(sql: string) => raw.prepare(sql).all() as T[],
     runAsync: async (sql: string, params: (string | number)[]) => raw.prepare(sql).run(...params),
   };
 }
@@ -124,5 +127,47 @@ describe('settings store', () => {
     const failing = { ...db, runAsync: () => Promise.reject(new Error('disk full')) };
     await expect(changeSettings(failing, { sound: true })).rejects.toThrow('disk full');
     expect(setSoundEnabled).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe('profile', () => {
+  const answers = {
+    pet: { species: 'dog', name: '  Waffles ', coat: 'spotted' },
+    workday: { endMinute: 18 * 60, days: 0b0011110, nudge: true },
+    switchOff: ['email', 'laptop'],
+  } as const;
+
+  it('is not onboarded until the answers are saved, then reads them back', async () => {
+    const db = openTestDb();
+    await migrate(db);
+    expect(await getProfile(db)).toEqual({
+      pet: null,
+      workday: { endMinute: 17 * 60 + 30, days: 0b0111110, nudge: false },
+      switchOff: [],
+    });
+    await saveOnboarding(db, { ...answers, switchOff: [...answers.switchOff] });
+    expect(await getProfile(db)).toEqual({
+      pet: { species: 'dog', name: 'Waffles', coat: 'spotted' },
+      workday: answers.workday,
+      switchOff: ['email', 'laptop'],
+    });
+  });
+
+  it('saves nothing when any answer is rejected', async () => {
+    const db = openTestDb();
+    await migrate(db);
+    const badDays = { ...answers, workday: { ...answers.workday, days: 0 }, switchOff: [...answers.switchOff] };
+    await expect(saveOnboarding(db, badDays)).rejects.toThrow();
+    expect(await getProfile(db)).toMatchObject({ pet: null, switchOff: [] });
+    await expect(saveOnboarding(db, { ...badDays, pet: { ...answers.pet, coat: 'tabby' } })).rejects.toThrow(/coat/);
+    await expect(saveOnboarding(db, { ...badDays, pet: { ...answers.pet, name: 'x'.repeat(13) } })).rejects.toThrow();
+  });
+
+  it('rejects malformed rows', () => {
+    expect(() => parseWorkday({ end_minute: 1051, days: 62, nudge: 0 })).toThrow();
+    expect(() => parseWorkday({ end_minute: 1050, days: 0, nudge: 0 })).toThrow();
+    expect(() => parsePet({ species: 'cat', name: 'Biscuit', coat: 'golden' })).toThrow();
+    expect(() => parsePet({ species: 'fox', name: 'Biscuit', coat: 'tabby' })).toThrow();
+    expect(parsePet({ species: 'cat', name: 'Biscuit', coat: 'tabby' }).name).toBe('Biscuit');
   });
 });

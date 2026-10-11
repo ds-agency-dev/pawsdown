@@ -37,7 +37,8 @@ interface ArrowProps {
   readonly onPress?: () => void;
 }
 
-function Arrow({ icon, scale, label, onPress }: ArrowProps) {
+/** A pixel arrow key: drops 1 art px on the snap spring with a select tick. */
+export function Arrow({ icon, scale, label, onPress }: ArrowProps) {
   const reduceMotion = useReducedMotion();
   const drop = useSharedValue(0);
   const moveTo = (target: number) => drop.set(reduceMotion ? target : withSpring(target, snap));

@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 
 import { preloadSounds } from '@/audio/sounds';
 import { DATABASE_NAME, initDatabase } from '@/data/db';
+import { useOnboarded } from '@/data/profile-store';
 import { color, fonts } from '@/design/tokens';
 
 export { ErrorBoundary } from 'expo-router';
@@ -35,7 +36,24 @@ export default function RootLayout() {
   return (
     <SQLiteProvider databaseName={DATABASE_NAME} onInit={initDatabase}>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.surfaceDeep } }} />
+      <AppStack />
     </SQLiteProvider>
+  );
+}
+
+/** Until a pet is saved only the welcome and onboarding exist; saving it flips the guards and lands on the desk. */
+function AppStack() {
+  const onboarded = useOnboarded();
+  return (
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.surfaceDeep } }}>
+      <Stack.Protected guard={onboarded}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="menu-spike" />
+      </Stack.Protected>
+      <Stack.Protected guard={!onboarded}>
+        <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
+        <Stack.Screen name="onboarding" />
+      </Stack.Protected>
+    </Stack>
   );
 }

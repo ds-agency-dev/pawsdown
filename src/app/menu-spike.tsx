@@ -15,6 +15,7 @@ import { PixelButton } from '@/components/PixelButton';
 import { PixelPanel } from '@/components/PixelPanel';
 import { useDisplayFont } from '@/components/PixelText';
 import type { ScreenEffect, Settings } from '@/data/settings';
+import { useResetOnboarding } from '@/data/profile-store';
 import { useChangeSettings, useSetting } from '@/data/settings-store';
 import { color, fonts, menu, palette } from '@/design/tokens';
 import { ALL_COATS } from '@/render/bitmap';
@@ -34,6 +35,7 @@ export default function MenuSpike() {
   const effect = EFFECTS.indexOf(useSetting('screenEffect'));
   const labelFont = { fontFamily: useDisplayFont() };
   const changeSettings = useChangeSettings();
+  const resetOnboarding = useResetOnboarding();
   const save = (patch: Partial<Settings>) =>
     changeSettings(patch).catch((error: unknown) => console.error('Saving settings failed', error));
   const toggle = (key: 'haptics' | 'sound' | 'easyRead', on: boolean) => save({ [key]: !on });
@@ -141,6 +143,15 @@ export default function MenuSpike() {
         </MenuPanel>
         <MenuPanel title="Danger zone" tone="ember" float delay={800}>
           <PixelButton label="Delete everything" variant="danger" full />
+          {__DEV__ && (
+            <PixelButton
+              label="Redo onboarding"
+              variant="quiet"
+              onPress={() =>
+                void resetOnboarding().catch((error: unknown) => console.error('Resetting onboarding failed', error))
+              }
+            />
+          )}
         </MenuPanel>
         <MenuPanel title="Quiet group" tone="heather">
           <TextInput
