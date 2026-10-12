@@ -112,9 +112,19 @@ export const menu = {
    * much going on), the return is an eased glide of `returnMs`, and the flight kicks this much tilt at its middle.
    * The desk object and the lifted copy hand over edge-on (user found a crossfade cheap): turning edge-on takes
    * `edgeOnMs`, turning face-up `faceUpMs` (user: 110 ms halves felt slow). Under Reduce Motion there's no turn; the
-   * copy crossfades over the last `crossfade` of the travel.
+   * copy crossfades over the last `crossfade` of the travel. The fly-in uses its own `spring` (~10% overshoot) and
+   * the face-up turn a moderate `faceUpOvershoot`: user found the snap spring (~18%) too aggressive, ~2% too light.
    */
-  lift: { backdrop: 0.9, returnMs: 420, edgeOnMs: 70, faceUpMs: 120, crossfade: 0.35, kickDeg: -4 },
+  lift: {
+    backdrop: 0.9,
+    returnMs: 420,
+    edgeOnMs: 70,
+    faceUpMs: 120,
+    faceUpOvershoot: 1.35,
+    crossfade: 0.35,
+    kickDeg: -4,
+    spring: { stiffness: 420, damping: 25, mass: 1 },
+  },
   /**
    * Welcome screen CRT power-on, in ms from mount. Eased timings, no springs: hardware switching on shouldn't
    * wobble. A dot stretches into the beam, the picture opens out of it overexposed while the swirl warms up,

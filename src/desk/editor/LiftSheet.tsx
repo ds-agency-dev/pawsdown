@@ -28,7 +28,7 @@ const LIFT = menu.lift;
 // Half-turns: going edge-on accelerates away (ease-in); coming face-up snaps open and overshoots a touch, like a
 // card slapped down.
 const EDGE_ON = { duration: LIFT.edgeOnMs, easing: Easing.bezier(0.55, 0, 0.85, 0.35) };
-const FACE_UP = { duration: LIFT.faceUpMs, easing: Easing.out(Easing.back(1.6)) };
+const FACE_UP = { duration: LIFT.faceUpMs, easing: Easing.out(Easing.back(LIFT.faceUpOvershoot)) };
 /** The pet is drawn at 3 pt per sprite px and shows this much of itself over the object's top edge. */
 const PET_SCALE = 3;
 export const PET_PEEK_PT = 13 * A;
@@ -116,7 +116,7 @@ export function LiftSheet({
     const rise = () => {
       turn.set(withTiming(1, FACE_UP));
       lift.set(
-        withSpring(1, snap, (finished) => {
+        withSpring(1, LIFT.spring, (finished) => {
           'worklet';
           if (finished) scheduleOnRN(popPet);
         }),
