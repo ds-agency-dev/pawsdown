@@ -1,4 +1,4 @@
-import { playSound } from '@/audio/sounds';
+import { playSound, type SoundName } from '@/audio/sounds';
 
 import { selectHaptic, tapHaptic, thudHaptic } from './haptics';
 
@@ -41,6 +41,33 @@ export function powerOnFeedback() {
 /** The picture snapping open (haptic only: the power-on sound already carries the thunk). */
 export function thudFeedback() {
   thudHaptic();
+}
+
+/** A desk object turning over as it's lifted to edit or set back down. */
+export function flipFeedback() {
+  selectHaptic();
+  playSound('flick');
+}
+
+/** Shutdown beats: what each one sounds and feels like. Counting ticks are sound only (a buzz per digit is too much). */
+const BEATS = {
+  cardFlip: { sound: 'flick', haptic: selectHaptic },
+  cardDrop: { sound: 'cardDrop', haptic: tapHaptic },
+  drawerShut: { sound: 'drawerShut', haptic: thudHaptic },
+  stamp: { sound: 'stamp', haptic: thudHaptic },
+  tallyIn: { sound: 'tallyIn', haptic: null },
+  count: { sound: 'count', haptic: null },
+  countPop: { sound: 'countPop', haptic: selectHaptic },
+  lightsOut: { sound: 'lightsOut', haptic: thudHaptic },
+  reward: { sound: 'reward', haptic: tapHaptic },
+} as const satisfies Record<string, { sound: SoundName; haptic: (() => void) | null }>;
+
+export type BeatCue = keyof typeof BEATS;
+
+export function beatFeedback(cue: BeatCue) {
+  const beat = BEATS[cue];
+  beat.haptic?.();
+  playSound(beat.sound);
 }
 
 /** A beat landing, e.g. the welcome title's last letter. Haptic only, so it sits under the typing blips. */

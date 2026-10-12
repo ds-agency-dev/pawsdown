@@ -5,7 +5,7 @@ export interface MigrationDb {
 }
 
 /** Text limits the UI enforces; the schema repeats them so bad data can never land. */
-export const limits = { cardChars: 40, winChars: 60, petNameChars: 12 } as const;
+export const limits = { cardChars: 40, winChars: 60, boundaryChars: 60, petNameChars: 12 } as const;
 
 /**
  * Append-only: a shipped migration is never edited, only followed by a new one. Entry `i` takes the database from
@@ -82,6 +82,22 @@ export const MIGRATIONS: readonly string[] = [
   -- Analytics is opt-in, asked during onboarding. The settings row always exists, so v1's column default never
   -- applies again; this turns it off for anyone who hasn't been asked yet.
   UPDATE settings SET analytics = 0;
+  `,
+  `
+  -- The boundary move's length is capped in code (SQLite can't add a CHECK to an existing column).
+  ALTER TABLE evenings ADD COLUMN boundary_done INTEGER NOT NULL DEFAULT 0 CHECK (boundary_done IN (0, 1));
+
+  -- Tonight's in-progress clock-out, so it survives the app being killed. Cleared when the evening is saved.
+  CREATE TABLE draft (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    day TEXT NOT NULL CHECK (day GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+    card0 TEXT NOT NULL DEFAULT '' CHECK (length(card0) <= ${limits.cardChars}),
+    card1 TEXT NOT NULL DEFAULT '' CHECK (length(card1) <= ${limits.cardChars}),
+    card2 TEXT NOT NULL DEFAULT '' CHECK (length(card2) <= ${limits.cardChars}),
+    win TEXT NOT NULL DEFAULT '' CHECK (length(win) <= ${limits.winChars}),
+    boundary TEXT NOT NULL DEFAULT '' CHECK (length(boundary) <= ${limits.boundaryChars}),
+    boundary_done INTEGER NOT NULL DEFAULT 0 CHECK (boundary_done IN (0, 1))
+  );
   `,
 ];
 

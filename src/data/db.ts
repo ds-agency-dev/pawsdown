@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { migrate } from './migrations';
+import { loadEvening } from './evening-store';
 import { loadProfile } from './profile-store';
 import { loadSettings } from './settings-store';
 
@@ -14,4 +15,5 @@ export async function initDatabase(db: SQLiteDatabase) {
   await migrate(db);
   await loadSettings(db);
   await loadProfile(db);
+  await loadEvening(db);
 }

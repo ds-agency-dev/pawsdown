@@ -20,6 +20,8 @@ interface DeskSceneProps {
   readonly seq: SharedValue<number>;
   /** Finger-down on the idle button, 0..1. */
   readonly held: SharedValue<number>;
+  /** The lifted object's turn on the desk, 1 face-up → 0 edge-on. */
+  readonly flip: SharedValue<number>;
 }
 
 /**
@@ -27,7 +29,7 @@ interface DeskSceneProps {
  * sequence. One Skia picture is recorded per frame on the UI thread from `seq` and the clock; React only re-renders
  * when the script (text, cards, pet) changes.
  */
-export function DeskScene({ script, pet, art, seq, held }: DeskSceneProps) {
+export function DeskScene({ script, pet, art, seq, held, flip }: DeskSceneProps) {
   const reduced = useReducedMotion();
   const clock = useClock();
   const sizes = useMemo(() => textSizes(art.unitPx), [art.unitPx]);
@@ -73,6 +75,7 @@ export function DeskScene({ script, pet, art, seq, held }: DeskSceneProps) {
           winText,
           sizes,
           images,
+          flip: flip.value,
         }),
       { width: grid.scene.w, height: grid.scene.h },
     ),

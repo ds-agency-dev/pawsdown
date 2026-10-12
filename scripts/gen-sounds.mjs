@@ -10,7 +10,7 @@ const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'sound
 const sine = (phase) => Math.sin(2 * Math.PI * phase);
 const triangle = (phase) => 1 - 4 * Math.abs((phase % 1) - 0.5);
 // A 25% pulse is the classic chip voice; the low-pass below rounds it off so it reads warm, not buzzy.
-const pulse = (phase) => ((phase % 1) < 0.25 ? 1 : -1);
+const pulse = (phase) => (phase % 1 < 0.25 ? 1 : -1);
 
 // Deterministic noise so regenerating gives byte-identical files.
 let seed = 0x2f6b;
@@ -95,6 +95,58 @@ const powerOn = mix(
   { at: 260, s: lowpass(burst({ ms: 300, amp: 0.22 }), 3200) },
 );
 
+// ---- Clock-out beats. Defined after the UI kit so the seeded noise above stays byte-identical for older files.
+
+// A card turning over: a dry papery flick with a faint upward tick.
+const flick = mix(
+  { s: lowpass(burst({ ms: 28, amp: 0.16 }), 5200) },
+  { s: tone({ wave: triangle, from: 1100, to: 1500, ms: 20, amp: 0.05, decay: 6 }) },
+);
+// A card dropping into the drawer: a soft paper slide onto a low, woody bump.
+const cardDrop = mix(
+  { s: lowpass(burst({ ms: 70, amp: 0.2 }), 1800) },
+  { at: 30, s: tone({ wave: sine, from: 190, to: 110, ms: 80, amp: 0.32, attackMs: 1, decay: 4 }) },
+);
+// The drawer shutting on them: a wooden thunk.
+const drawerShut = mix(
+  { s: tone({ wave: sine, from: 125, to: 58, ms: 170, amp: 0.65, attackMs: 1, decay: 4 }) },
+  { s: lowpass(tone({ wave: triangle, from: 260, to: 190, ms: 60, amp: 0.2, decay: 5 }), 2000) },
+  { s: lowpass(burst({ ms: 30, amp: 0.22 }), 1500) },
+);
+// LOGGED: the stamp's thump, then a small bright bell (C6 + G6).
+const stamp = mix(
+  { s: thump },
+  { at: 30, s: tone({ wave: sine, from: 1047, ms: 320, amp: 0.16, attackMs: 3, decay: 3 }) },
+  { at: 70, s: tone({ wave: sine, from: 1568, ms: 280, amp: 0.1, attackMs: 3, decay: 3.5 }) },
+);
+// The tally panel sliding up: a quick soft swell.
+const tallyIn = lowpass(tone({ wave: triangle, from: 330, to: 660, ms: 130, amp: 0.16, attackMs: 25, decay: 2 }), 3000);
+// One digit ticking during the count-up: quieter and rounder than the UI tick.
+const count = lowpass(tone({ wave: pulse, from: 880, ms: 18, amp: 0.09, decay: 5 }), 3000);
+// A row's number landing with its pop: two quick notes up (G5 → D6).
+const countPop = lowpass(
+  mix(
+    { s: tone({ wave: pulse, from: 784, ms: 45, amp: 0.15, decay: 3 }) },
+    { at: 40, s: tone({ wave: pulse, from: 1175, ms: 70, amp: 0.15, decay: 4 }) },
+  ),
+  3500,
+);
+// Lights out: a deep thump and a dying crackle, as the screen kicks.
+const lightsOut = mix(
+  { s: tone({ wave: sine, from: 95, to: 34, ms: 420, amp: 0.75, attackMs: 1, decay: 3 }) },
+  { s: lowpass(burst({ ms: 140, amp: 0.18 }), 900) },
+);
+// Tonight's panel rising: a gentle C major arpeggio.
+const reward = lowpass(
+  mix(
+    ...[523, 659, 784, 1047].map((hz, i) => ({
+      at: i * 70,
+      s: tone({ wave: triangle, from: hz, ms: 260, amp: 0.13, attackMs: 4, decay: 3 }),
+    })),
+  ),
+  4000,
+);
+
 const SOUNDS = {
   // Button press: a soft downward chirp.
   tap: lowpass(tone({ wave: triangle, from: 880, to: 660, ms: 45, amp: 0.35 }), 6000),
@@ -109,6 +161,15 @@ const SOUNDS = {
   // The pet "typing" a character: very short and quiet, it repeats every 25 ms.
   blip: lowpass(tone({ wave: pulse, from: 520, ms: 28, amp: 0.14, decay: 4 }), 2500),
   powerOn,
+  flick,
+  cardDrop,
+  drawerShut,
+  stamp,
+  tallyIn,
+  count,
+  countPop,
+  lightsOut,
+  reward,
 };
 
 mkdirSync(OUT, { recursive: true });

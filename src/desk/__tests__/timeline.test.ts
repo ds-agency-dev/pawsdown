@@ -11,6 +11,7 @@ import {
   LIGHTS_OUT,
   lightsOutFx,
   petFrame,
+  shutdownCues,
   REWARD,
   rewardFrame,
   SEQ_TOTAL,
@@ -64,6 +65,32 @@ describe('shutdown timeline', () => {
     for (const i of [0, 1, 2]) {
       expect(cardFrame(i, IDLE, 0, false).visible).toBe(true);
       expect(cardFrame(i, beat('drawer-shut') + 10, 0, false).visible).toBe(false);
+    }
+  });
+
+  it('cues only what tonight filed, in time order', () => {
+    const full = shutdownCues([true, true, true], true, 4);
+    expect(full.map((c) => c.t)).toEqual([...full.map((c) => c.t)].sort((a, b) => a - b));
+    expect(full.filter((c) => c.cue === 'cardDrop')).toHaveLength(3);
+    expect(full.filter((c) => c.cue === 'countPop')).toHaveLength(3);
+    expect(full.find((c) => c.cue === 'cardDrop')?.t).toBeLessThan(beat('drawer-shut'));
+
+    const bare = shutdownCues([false, true, false], false, 1);
+    expect(bare.filter((c) => c.cue === 'cardDrop')).toHaveLength(1);
+    expect(bare.some((c) => c.cue === 'stamp')).toBe(false);
+    // No win: the wins row stays at 0, so it doesn't tick or pop.
+    expect(bare.filter((c) => c.cue === 'countPop')).toHaveLength(2);
+  });
+
+  it('drops each card in behind the drawer front before the drawer shuts', () => {
+    for (let i = 0; i < 3; i++) {
+      const start = beat(`card-${i + 1}`);
+      const hover = cardFrame(i, start + 200, 0, false);
+      const falling = cardFrame(i, start + 320, 0, false);
+      expect(hover.inDrawer).toBe(false);
+      expect(falling.inDrawer).toBe(true);
+      expect(falling.y).toBeGreaterThan(hover.y);
+      expect(cardFrame(i, beat('drawer-shut') - 1, 0, false).visible).toBe(false);
     }
   });
 

@@ -1,4 +1,12 @@
-import { FilterMode, MipmapMode, Skia, type SkCanvas, type SkImage, type SkPaint } from '@shopify/react-native-skia';
+import {
+  ClipOp,
+  FilterMode,
+  MipmapMode,
+  Skia,
+  type SkCanvas,
+  type SkImage,
+  type SkPaint,
+} from '@shopify/react-native-skia';
 
 import { palette, type PaletteName } from '@/design/tokens';
 import { ADVANCE, GLYPH_H, wrapText } from '@/render/bitmap';
@@ -9,6 +17,7 @@ import {
   type CardFrame,
   cardFrame,
   clamp,
+  drawerDip,
   drawerOpen,
   easeOutCubic,
   FAN,
@@ -17,6 +26,7 @@ import {
   lidOpen,
   LIGHTS_OUT,
   nightness,
+  NOTE,
   petFrame,
   type PetPose,
   REWARD,
@@ -37,7 +47,12 @@ import {
 // Runs on the UI thread every frame, so it only draws prebuilt images and rects: all text is rasterised up front
 // (deskTexts) into images keyed by text + colour.
 
-export type CardsMode = 'slots' | 'filled' | 'none';
+/** A desk object the clock-out flow lifts into an editor. */
+export type DeskPart = 'card0' | 'card1' | 'card2' | 'win' | 'boundary';
+export const CARD_PARTS = ['card0', 'card1', 'card2'] as const;
+
+/** The sticky note on the laptop: blank, a move picked, or picked and done. */
+export type NoteState = 'blank' | 'set' | 'done';
 
 /** What the scene shows; changes re-render React, while time and presses stay on the UI thread. */
 export interface DeskScript {
@@ -45,10 +60,13 @@ export interface DeskScript {
   readonly time: string;
   /** Header line 2, e.g. "Clock out at 5:30". */
   readonly ask: string;
-  readonly cards: CardsMode;
+  /** Tomorrow's three slots in order; '' is an empty slot. */
   readonly tasks: readonly string[];
-  /** Null hides the ticket. */
-  readonly win: string | null;
+  /** '' shows the blank ticket at idle and no ticket in the sequence. */
+  readonly win: string;
+  readonly note: NoteState;
+  /** Lifted into an editor: drawn turned by `flip`, so the editor's copy and the desk hand over edge-on. */
+  readonly editing: DeskPart | null;
   /** Evenings clocked out, including tonight's once the sequence runs. */
   readonly evenings: number;
   /** Idle button label; empty hides the button. */
@@ -101,6 +119,7 @@ export function textKey(text: string, color: PaletteName) {
 }
 
 const SPARK_COLORS: readonly PaletteName[] = ['glow', 'candle', 'mint', 'lamp'];
+const HIDDEN_CARD: CardFrame = { visible: false, x: 0, y: 0, rot: 0, sx: 1, scale: 1, alpha: 0, inDrawer: false };
 /** Act one's hold: header line 2 and the button that starts act two. */
 export const READY = "Tonight's panel is ready.";
 export const LIGHTS_OUT_LABEL = 'Lights out';
@@ -119,10 +138,21 @@ export function winLines(win: string, sizes: TextSizes): string[] {
   return wrapText(`Win: ${win}`, Math.floor((60 + sizes.tiny) / (6 * sizes.tiny))).slice(0, 2);
 }
 
-export function doneLine(evenings: number) {
+export function doneLine(filed: number, wins: number, evenings: number) {
   'worklet';
-  return `3 filed · 1 win · ${evenings} evenings`;
+  const nights = `${evenings} ${evenings === 1 ? 'evening' : 'evenings'}`;
+  return wins > 0 ? `${filed} filed · ${wins} win · ${nights}` : `${filed} filed · ${nights}`;
 }
+
+/** Slots with a task: the cards that file. */
+export function filedCount(tasks: readonly string[]) {
+  'worklet';
+  let n = 0;
+  for (const task of tasks) if (task.length > 0) n++;
+  return n;
+}
+
+export const BLANK_WIN = "+ Today's win";
 
 /** Every (text, colour) the scene can draw for this script, so each can be rasterised once. */
 export function deskTexts(script: DeskScript, sizes: TextSizes): [string, PaletteName][] {
@@ -133,8 +163,9 @@ export function deskTexts(script: DeskScript, sizes: TextSizes): [string, Palett
     [script.ask, 'night'],
     ['Shutdown complete.', 'glow'],
     ['Shutdown complete.', 'night'],
-    [doneLine(script.evenings), 'parchment'],
-    [doneLine(script.evenings), 'night'],
+    [doneLine(filedCount(script.tasks), script.win ? 1 : 0, script.evenings), 'parchment'],
+    [doneLine(filedCount(script.tasks), script.win ? 1 : 0, script.evenings), 'night'],
+    [BLANK_WIN, 'smoke'],
     [script.topLabel, 'parchment'],
     [script.topLabel, 'night'],
     ['+', 'smoke'],
@@ -170,11 +201,15 @@ export interface DeskFrameInput {
   readonly winText: readonly string[];
   readonly sizes: TextSizes;
   readonly images: DeskImages;
+  /** The lifted object's turn, 1 face-up → 0 edge-on (see `DeskScript.editing`). */
+  readonly flip: number;
 }
 
 export function drawDesk(canvas: SkCanvas, input: DeskFrameInput) {
   'worklet';
   const { t, now, reduced, held, script, sizes, images } = input;
+  // Horizontal scale of a desk object: the one lifted into an editor turns edge-on (0) while the editor has it.
+  const turned = (part: DeskPart) => (script.editing === part ? input.flip : 1);
   const paint = Skia.Paint();
   paint.setAntiAlias(false);
 
@@ -236,7 +271,7 @@ export function drawDesk(canvas: SkCanvas, input: DeskFrameInput) {
     text('Shutdown complete.', 'glow', 135 / 2, 6, sizes.title, 'center', k, 'night');
     if (t >= CLEAR_OUT) {
       text(
-        doneLine(script.evenings),
+        doneLine(filedCount(script.tasks), script.win ? 1 : 0, script.evenings),
         'parchment',
         135 / 2,
         17,
@@ -306,6 +341,26 @@ export function drawDesk(canvas: SkCanvas, input: DeskFrameInput) {
       color('paper');
       rect(108, 86 - 20 * (1 - lid), 2, 2);
     }
+    // Sticky note on the lid: tonight's boundary move (blank shows a faint +). It folds down with the lid.
+    const noteTurn = turned('boundary');
+    if (noteTurn > 0.01) {
+      const blank = script.note === 'blank';
+      const k = blank ? 0.55 : 1;
+      canvas.save();
+      canvas.translate(NOTE.x + NOTE.w / 2, 92 - 20 * lid + 3 * lid);
+      canvas.scale(noteTurn, lid);
+      canvas.translate(-NOTE.w / 2, 0);
+      panel(0, 0, NOTE.w, NOTE.h, script.note === 'done' ? 'mint' : 'candle', 'night', k);
+      color('night', k);
+      if (blank) {
+        rect(4, 2, 2, 6);
+        rect(2, 4, 6, 2);
+      } else {
+        rect(2, 3, 6, 1);
+        rect(2, 5, 4, 1);
+      }
+      canvas.restore();
+    }
   }
 
   // ---- Desk top and one wide drawer, flush with the desk front (user: the design's labelled drawer looked stuck
@@ -320,66 +375,89 @@ export function drawDesk(canvas: SkCanvas, input: DeskFrameInput) {
     color('night');
     rect(10, 107, 115, slot);
   }
-  panel(9, 106 + slot, 117, 15, 'twilight', 'night');
+  // The front dips as each card lands in it.
+  const front = slot + drawerDip(t, reduced);
+
+  // ---- Cards: frames once per draw; ones falling through the slot go behind the drawer front, clipped at its
+  // bottom edge so they never peek out below it, and the front then shuts on them.
+  const cw = CARD.w;
+  const ch = CARD.h;
+  // Empty slots don't file.
+  const filed: CardFrame[] = [];
+  for (let i = 0; i < 3; i++) {
+    filed.push((script.tasks[i] ?? '').length > 0 ? cardFrame(i, t, now, reduced) : HIDDEN_CARD);
+  }
+  const card = (i: number, c: CardFrame) => {
+    const turn = turned(CARD_PARTS[i] ?? 'card0');
+    if (turn <= 0.01) return;
+    canvas.save();
+    canvas.translate(c.x, c.y);
+    canvas.rotate((c.rot * 180) / Math.PI, 0, 0);
+    canvas.scale(Math.max(0.02, Math.abs(c.sx)) * c.scale * turn, c.scale);
+    const x = -cw / 2;
+    const y = -ch / 2;
+    if (c.sx >= 0) {
+      panel(x, y, cw, ch, 'paper', 'night', c.alpha);
+      text(`No.${i + 1}`, 'plum', x + 3, y + 3, sizes.tiny, 'left', c.alpha);
+      step(x + cw - 8, y + 3, 5, 5, 'night', c.alpha);
+      step(x + cw - 7, y + 4, 3, 3, 'lamp', c.alpha);
+      color('parchment', c.alpha);
+      rect(x + 3, y + 10, cw - 6, 1);
+      const lines = input.cardText[i] ?? [];
+      for (let l = 0; l < lines.length; l++) {
+        text(lines[l] ?? '', 'night', x + 3, y + 14 + l * 9 * sizes.small, sizes.small, 'left', c.alpha);
+      }
+      color('lamp', c.alpha);
+      rect(x + 3, y + ch - 6, 3, 3);
+    } else {
+      panel(x, y, cw, ch, 'plum', 'night', c.alpha);
+      color('heather', c.alpha);
+      for (let yy = 3; yy < ch - 3; yy += 4) {
+        for (let xx = 3 + ((yy / 4) % 2) * 2; xx < cw - 3; xx += 4) rect(x + xx, y + yy, 1, 1);
+      }
+      step(-6, -6, 12, 12, 'night', c.alpha);
+      step(-5, -5, 10, 10, 'candle', c.alpha);
+      step(-3, -6, 8, 8, 'night', c.alpha);
+    }
+    canvas.restore();
+  };
+  canvas.save();
+  canvas.clipRect(Skia.XYWHRect(0, 0, 135, 121 + front), ClipOp.Intersect, false);
+  for (let i = 0; i < filed.length; i++) {
+    const c = filed[i];
+    if (c && c.visible && c.inDrawer) card(i, c);
+  }
+  canvas.restore();
+
+  panel(9, 106 + front, 117, 15, 'twilight', 'night');
   color('plum');
-  rect(11, 107 + slot, 113, 1);
-  step(57, 111 + slot, 21, 4, 'night');
+  rect(11, 107 + front, 113, 1);
+  step(57, 111 + front, 21, 4, 'night');
   color('lamp');
-  rect(59, 112 + slot, 17, 1);
+  rect(59, 112 + front, 17, 1);
   color('glow');
-  rect(59, 112 + slot, 4, 1);
+  rect(59, 112 + front, 4, 1);
 
   if (t < 0 && script.topLabel) text(script.topLabel, 'parchment', 135 / 2, 128, sizes.tiny, 'center', 1, 'night');
 
-  // ---- Cards
-  const cw = CARD.w;
-  const ch = CARD.h;
-  if (script.cards === 'slots') {
-    for (let j = 0; j < 3; j++) {
-      const f = FAN[j] ?? FAN[1];
-      canvas.save();
-      canvas.translate(f.x, f.y);
-      canvas.rotate((f.r * 180) / Math.PI, 0, 0);
-      panel(-cw / 2, -ch / 2, cw, ch, 'dusk', 'heather');
-      text(`No.${j + 1}`, 'smoke', -cw / 2 + 3, -ch / 2 + 3, sizes.tiny);
-      text('+', 'smoke', 0, -4, sizes.big, 'center');
-      canvas.restore();
-    }
-  } else if (script.cards === 'filled') {
-    for (let i = 0; i < 3; i++) {
-      const c: CardFrame = cardFrame(i, t, now, reduced);
-      if (!c.visible) continue;
-      canvas.save();
-      canvas.translate(c.x, c.y);
-      canvas.rotate((c.rot * 180) / Math.PI, 0, 0);
-      canvas.scale(Math.max(0.02, Math.abs(c.sx)) * c.scale, c.scale);
-      const x = -cw / 2;
-      const y = -ch / 2;
-      if (c.sx >= 0) {
-        panel(x, y, cw, ch, 'paper', 'night', c.alpha);
-        text(`No.${i + 1}`, 'plum', x + 3, y + 3, sizes.tiny, 'left', c.alpha);
-        step(x + cw - 8, y + 3, 5, 5, 'night', c.alpha);
-        step(x + cw - 7, y + 4, 3, 3, 'lamp', c.alpha);
-        color('parchment', c.alpha);
-        rect(x + 3, y + 10, cw - 6, 1);
-        const lines = input.cardText[i] ?? [];
-        for (let l = 0; l < lines.length; l++) {
-          text(lines[l] ?? '', 'night', x + 3, y + 14 + l * 9 * sizes.small, sizes.small, 'left', c.alpha);
-        }
-        color('lamp', c.alpha);
-        rect(x + 3, y + ch - 6, 3, 3);
-      } else {
-        panel(x, y, cw, ch, 'plum', 'night', c.alpha);
-        color('heather', c.alpha);
-        for (let yy = 3; yy < ch - 3; yy += 4) {
-          for (let xx = 3 + ((yy / 4) % 2) * 2; xx < cw - 3; xx += 4) rect(x + xx, y + yy, 1, 1);
-        }
-        step(-6, -6, 12, 12, 'night', c.alpha);
-        step(-5, -5, 10, 10, 'candle', c.alpha);
-        step(-3, -6, 8, 8, 'night', c.alpha);
-      }
-      canvas.restore();
-    }
+  // ---- Cards in front: empty slots (fading out once the sequence starts), the idle fan and cards in flight
+  const slotAlpha = t < 0 ? 1 : 1 - clamp(t / 150, 0, 1);
+  for (let j = 0; j < 3; j++) {
+    const turn = turned(CARD_PARTS[j] ?? 'card0');
+    if (slotAlpha <= 0 || turn <= 0.01 || (script.tasks[j] ?? '').length > 0) continue;
+    const f = FAN[j] ?? FAN[1];
+    canvas.save();
+    canvas.translate(f.x, f.y);
+    canvas.rotate((f.r * 180) / Math.PI, 0, 0);
+    canvas.scale(turn, 1);
+    panel(-cw / 2, -ch / 2, cw, ch, 'dusk', 'heather', slotAlpha);
+    text(`No.${j + 1}`, 'smoke', -cw / 2 + 3, -ch / 2 + 3, sizes.tiny, 'left', slotAlpha);
+    text('+', 'smoke', 0, -4, sizes.big, 'center', slotAlpha);
+    canvas.restore();
+  }
+  for (let i = 0; i < filed.length; i++) {
+    const c = filed[i];
+    if (c && c.visible && !c.inDrawer) card(i, c);
   }
 
   // ---- Tally
@@ -388,7 +466,7 @@ export function drawDesk(canvas: SkCanvas, input: DeskFrameInput) {
     const B = TALLY_BOX;
     panel(B.x, tally.y, B.w, B.h, 'twilight', 'night', tally.alpha);
     const rows: [string, number, number][] = [
-      ['Loose ends filed', 0, input.cardText.length],
+      ['Loose ends filed', 0, filedCount(script.tasks)],
       ['Wins logged', 0, script.win ? 1 : 0],
       ['Evenings clocked out', script.evenings - 1, script.evenings],
     ];
@@ -410,8 +488,13 @@ export function drawDesk(canvas: SkCanvas, input: DeskFrameInput) {
     }
   }
 
-  // ---- Win ticket, stamped LOGGED with a spark burst
-  if (script.win !== null) {
+  // ---- Win ticket, stamped LOGGED with a spark burst; turns about its centre when lifted to edit
+  const ticketTurn = turned('win');
+  canvas.save();
+  canvas.translate(TICKET.x + TICKET.w / 2, 0);
+  canvas.scale(ticketTurn, 1);
+  canvas.translate(-(TICKET.x + TICKET.w / 2), 0);
+  if (script.win && ticketTurn > 0.01) {
     const tk = ticketFrame(t < 0 ? IDLE : t, reduced);
     if (tk.visible) {
       const T = TICKET;
@@ -455,6 +538,14 @@ export function drawDesk(canvas: SkCanvas, input: DeskFrameInput) {
       }
     }
   }
+
+  // A blank ticket waits for today's win until the sequence starts.
+  if (!script.win && ticketTurn > 0.01 && t < 0) {
+    const T = TICKET;
+    panel(T.x, T.y, T.w, T.h, 'dusk', 'heather');
+    text(BLANK_WIN, 'smoke', T.x + T.w / 2, T.y + 6, sizes.tiny, 'center');
+  }
+  canvas.restore();
 
   // ---- Tonight's panel
   const rw = rewardFrame(t, reduced);

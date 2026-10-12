@@ -12,6 +12,15 @@ const SOURCES = {
   toggleOff: require('@/assets/sounds/toggleOff.wav') as number,
   blip: require('@/assets/sounds/blip.wav') as number,
   powerOn: require('@/assets/sounds/powerOn.wav') as number,
+  flick: require('@/assets/sounds/flick.wav') as number,
+  cardDrop: require('@/assets/sounds/cardDrop.wav') as number,
+  drawerShut: require('@/assets/sounds/drawerShut.wav') as number,
+  stamp: require('@/assets/sounds/stamp.wav') as number,
+  tallyIn: require('@/assets/sounds/tallyIn.wav') as number,
+  count: require('@/assets/sounds/count.wav') as number,
+  countPop: require('@/assets/sounds/countPop.wav') as number,
+  lightsOut: require('@/assets/sounds/lightsOut.wav') as number,
+  reward: require('@/assets/sounds/reward.wav') as number,
 };
 
 export type SoundName = keyof typeof SOURCES;

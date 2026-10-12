@@ -1,4 +1,5 @@
 import { grid, motion, sequence, type SpringConfig } from '@/design/tokens';
+import type { BeatCue } from '@/motion/feedback';
 
 // The desk scene's motion as pure functions of time, ported from the starter kit's engine (dusk-scene.js) so the
 // shutdown matches the style lab and video renderer beat for beat. Every function is a worklet: the scene records
@@ -76,11 +77,18 @@ export const FAN = [
   { x: 67.5, y: 159, r: 0 },
   { x: 105, y: 162, r: 0.12 },
 ] as const;
-const DRAWER_SLOT = { x: 67.5, y: 112 };
+/**
+ * Filing: each card flies to its own lane above the open drawer (centre y), then falls `depth` art px through the
+ * slot behind the drawer front. At `scale` the card is 18×24, so it hovers just above the slot and ends below the
+ * front's top edge, fully hidden; card 3 lands before drawer-shut.
+ */
+const DROP = { x: 67.5, y: 94, spread: 30, depth: 30, scale: 0.5, flyMs: 220, fallMs: 170 } as const;
 export const BUTTON = { x: 12, y: 214, w: 111, h: 18 } as const;
 export const WINDOW = { x: 84, y: 30, w: 42, h: 40 } as const;
 export const PET = { x: 10, y: 36 } as const;
 export const TICKET = { x: 17, y: 192, w: 101, h: 17 } as const;
+/** The boundary sticky note on the open laptop lid (y is its top with the lid fully open). */
+export const NOTE = { x: 83, y: 75, w: 10, h: 10 } as const;
 export const TALLY_BOX = { x: 14, y: 132, w: 107, h: 56 } as const;
 export const REWARD_BOX = { x: 19.5, w: 96, h: 78, restY: 126, startY: 244 } as const;
 
@@ -104,30 +112,60 @@ export interface CardFrame {
   readonly sx: number;
   readonly scale: number;
   readonly alpha: number;
+  /** Falling through the slot: drawn behind the drawer front. */
+  readonly inDrawer: boolean;
 }
 
-/** Card i flips (snap spring) and arcs into the drawer slot, 90 ms apart; idle cards sway. */
+/**
+ * Card i flips (snap spring) and arcs to its lane over the drawer, then drops in behind the front; idle cards sway.
+ * Under Reduce Motion it slides without flipping or arcing and fades out instead of dropping.
+ */
 export function cardFrame(i: number, t: number, now: number, reduced: boolean): CardFrame {
   'worklet';
+  const hidden = { visible: false, x: 0, y: 0, rot: 0, sx: 1, scale: 1, alpha: 0, inDrawer: false };
   const fan = FAN[i] ?? FAN[1];
-  const p = t < 0 ? 0 : springAt(t - (FIRST_CARD + D.stagger * i), springs.snap);
-  // Filed: gone once the drawer shuts on it.
-  if (t >= DRAWER_SHUT && p > 0.6) return { visible: false, x: 0, y: 0, rot: 0, sx: 1, scale: 1, alpha: 0 };
+  const since = t - (FIRST_CARD + D.stagger * i);
+  const p = t < 0 ? 0 : springAt(since, springs.snap);
+  // Safety net for skips: anything filed is gone once the drawer has shut.
+  if (t >= DRAWER_SHUT && p > 0.6) return hidden;
+  const fall = t < 0 || reduced ? 0 : clamp((since - DROP.flyMs) / DROP.fallMs, 0, 1);
+  if (fall >= 1 || (reduced && t >= 0 && since >= DROP.flyMs)) return hidden;
   const q = clamp(p, 0, 1.2);
   const k = clamp(q, 0, 1);
-  let y = lerp(fan.y, DRAWER_SLOT.y, Math.min(q, 1));
+  let y = lerp(fan.y, DROP.y, Math.min(q, 1));
   if (!reduced) y -= Math.sin(Math.PI * k) * 22;
-  let rot = lerp(fan.r, (i - 1) * 0.5, k);
+  // Gravity: eases in, so it hangs over the slot for a beat and then drops.
+  y += fall * fall * DROP.depth;
+  let rot = lerp(fan.r, (i - 1) * 0.08, k);
   if (t < 0 && !reduced) rot += Math.sin(now * 0.0012 + i) * 0.012;
   return {
     visible: true,
-    x: lerp(fan.x, DRAWER_SLOT.x, Math.min(q, 1)),
+    x: lerp(fan.x, DROP.x + (i - 1) * DROP.spread, Math.min(q, 1)),
     y,
     rot,
     sx: reduced ? 1 : Math.cos(Math.PI * k),
-    scale: lerp(1, 0.35, k),
+    scale: lerp(1, DROP.scale, k),
     alpha: reduced ? 1 - clamp((q - 0.5) * 2, 0, 1) : 1,
+    inDrawer: fall > 0,
   };
+}
+
+/** When card i lands in the drawer, in sequence ms (for the dip and its tick). */
+export function cardLanded(i: number) {
+  'worklet';
+  return FIRST_CARD + D.stagger * i + DROP.flyMs + DROP.fallMs;
+}
+
+/** The drawer front dips half an art px as each card lands, as if it caught it. */
+export function drawerDip(t: number, reduced: boolean) {
+  'worklet';
+  if (reduced || t < 0) return 0;
+  let dip = 0;
+  for (let i = 0; i < 3; i++) {
+    const a = t - cardLanded(i);
+    if (a >= 0 && a < 120) dip = Math.max(dip, 0.5 * Math.sin((Math.PI * a) / 120));
+  }
+  return dip;
 }
 
 export type PetPose = 'sit' | 'blink' | 'sleep';
@@ -254,11 +292,39 @@ export function tallyRow(i: number, t: number, from: number, to: number) {
   return { value, pop };
 }
 
-/** When each tally row ticks (3 ticks per row), for the count sound. */
-export const TALLY_TICKS: readonly number[] = [0, 1, 2].flatMap((row) =>
-  [1, 2, 3].map((s) => TALLY + row * TALLY_ROW_STAGGER + (D.countUp * s) / 3),
-);
+export interface Cue {
+  readonly t: number;
+  readonly cue: BeatCue;
+}
 
+/**
+ * The shutdown's sounds and haptics in time order, for what tonight actually filed: a flick and a drop per card,
+ * the drawer, the LOGGED stamp only with a win, and for each tally row that changes two counting ticks and a pop
+ * as its number lands. A row that stays put (no win) is silent.
+ */
+export function shutdownCues(filled: readonly boolean[], win: boolean, evenings: number): Cue[] {
+  // Runs on JS; marked like the rest of the timeline so the worklet guard (and any future UI-thread use) holds.
+  'worklet';
+  const cues: Cue[] = [];
+  filled.forEach((on, i) => {
+    if (on) cues.push({ t: FIRST_CARD + D.stagger * i, cue: 'cardFlip' }, { t: cardLanded(i), cue: 'cardDrop' });
+  });
+  if (filled.some(Boolean)) cues.push({ t: DRAWER_SHUT, cue: 'drawerShut' });
+  if (win) cues.push({ t: STAMP, cue: 'stamp' });
+  cues.push({ t: TALLY, cue: 'tallyIn' });
+  const rows = [filled.filter(Boolean).length, win ? 1 : 0, Math.min(1, evenings)];
+  rows.forEach((change, row) => {
+    if (change <= 0) return;
+    const start = TALLY + row * TALLY_ROW_STAGGER;
+    cues.push(
+      { t: start + D.countUp / 3, cue: 'count' },
+      { t: start + (D.countUp * 2) / 3, cue: 'count' },
+      { t: start + D.countUp, cue: 'countPop' },
+    );
+  });
+  cues.push({ t: LIGHTS_OUT, cue: 'lightsOut' }, { t: REWARD, cue: 'reward' });
+  return cues.sort((a, b) => a.t - b.t);
+}
 export interface RewardFrame {
   readonly visible: boolean;
   readonly y: number;
