@@ -9,6 +9,7 @@ import {
   type Profile,
   type ProfileDb,
   saveOnboarding,
+  type Workday,
 } from './profile';
 import { loadSettings } from './settings-store';
 
@@ -66,4 +67,8 @@ export function useFinishOnboarding() {
 export function useResetOnboarding() {
   const db = useSQLiteContext();
   return useCallback(() => resetOnboarding(db), [db]);
+}
+
+export function useWorkday(): Workday {
+  return useSyncExternalStore(subscribe, () => read().workday);
 }

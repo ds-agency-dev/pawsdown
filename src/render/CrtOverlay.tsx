@@ -1,11 +1,11 @@
 import { Canvas, Fill, Shader } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { hexToRgb01, palette } from '@/design/tokens';
 
 import { overlayEffect } from './effects';
-import { useArtGrid } from './swirl';
+import { useArtGrid, useCanvasSize } from './swirl';
 
 // Values from the design system's CrtOverlay CSS (points): 3pt scanline period with a 1pt dark row,
 // tube = rounded inset frame with an inner shadow. "flat" drops the tube for sheets / Soft mode.
@@ -21,7 +21,8 @@ export type CrtOverlayPreset = keyof typeof PRESETS;
  * Static: Skia only redraws on resize, so scrolling underneath costs compositing only.
  */
 export function CrtOverlay({ preset = 'menu' }: { readonly preset?: CrtOverlayPreset }) {
-  const art = useArtGrid();
+  const [size, onLayout] = useCanvasSize();
+  const art = useArtGrid(size);
   const uniforms = useMemo(() => {
     const p = PRESETS[preset];
     return {
@@ -38,10 +39,15 @@ export function CrtOverlay({ preset = 'menu' }: { readonly preset?: CrtOverlayPr
   }, [art.width, art.height, preset]);
 
   return (
-    <Canvas style={StyleSheet.absoluteFill} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Fill>
-        <Shader source={overlayEffect} uniforms={uniforms} />
-      </Fill>
-    </Canvas>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" onLayout={onLayout}>
+      <Canvas
+        style={StyleSheet.absoluteFill}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants">
+        <Fill>
+          <Shader source={overlayEffect} uniforms={uniforms} />
+        </Fill>
+      </Canvas>
+    </View>
   );
 }

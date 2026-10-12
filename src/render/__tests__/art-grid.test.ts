@@ -17,6 +17,13 @@ describe('computeArtGrid', () => {
     expect(g.rows).toBeGreaterThanOrEqual(240);
   });
 
+  it('fits the scene below a top inset, above the canvas bottom', () => {
+    // iPhone SE desk: canvas above a 68pt tab bar, scene below the 20pt status bar.
+    const g = computeArtGrid(375, 599, 2, 20);
+    expect(g.originY * g.unitPx).toBeGreaterThanOrEqual(40);
+    expect((g.originY + 240) * g.unitPx).toBeLessThanOrEqual(599 * 2);
+  });
+
   it('never drops below one device pixel per art pixel', () => {
     expect(computeArtGrid(50, 50, 1).unitPx).toBe(1);
   });

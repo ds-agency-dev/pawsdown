@@ -15,10 +15,13 @@ export interface ArtGrid {
 
 // The brief's "3 pt per art px" overflows a 390 pt screen (135 × 3 = 405), so we pick the largest
 // integer *device-pixel* unit that fits the scene, and let the swirl cover the remainder.
-export function computeArtGrid(widthPt: number, heightPt: number, pixelRatio: number): ArtGrid {
+// insetTopPt keeps the scene clear of the status bar; the grid itself still covers the whole canvas.
+export function computeArtGrid(widthPt: number, heightPt: number, pixelRatio: number, insetTopPt = 0): ArtGrid {
   const widthPx = Math.round(widthPt * pixelRatio);
   const heightPx = Math.round(heightPt * pixelRatio);
-  const unitPx = Math.max(1, Math.floor(Math.min(widthPx / grid.scene.w, heightPx / grid.scene.h)));
+  const insetPx = Math.round(insetTopPt * pixelRatio);
+  const fitPx = Math.max(1, heightPx - insetPx);
+  const unitPx = Math.max(1, Math.floor(Math.min(widthPx / grid.scene.w, fitPx / grid.scene.h)));
   const cols = Math.ceil(widthPx / unitPx);
   const rows = Math.ceil(heightPx / unitPx);
   return {
@@ -27,6 +30,6 @@ export function computeArtGrid(widthPt: number, heightPt: number, pixelRatio: nu
     cols,
     rows,
     originX: Math.floor((cols - grid.scene.w) / 2),
-    originY: Math.floor((rows - grid.scene.h) / 2),
+    originY: Math.max(0, Math.ceil(insetPx / unitPx) + Math.floor((Math.floor(fitPx / unitPx) - grid.scene.h) / 2)),
   };
 }

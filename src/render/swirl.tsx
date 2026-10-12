@@ -1,6 +1,6 @@
 import { Canvas, Fill, Shader, useClock } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
-import { PixelRatio, StyleSheet, useWindowDimensions } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { type LayoutChangeEvent, PixelRatio, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { type SharedValue, useDerivedValue, useReducedMotion } from 'react-native-reanimated';
 
 import { grid, hexToRgb01, motion, palette } from '@/design/tokens';
@@ -16,10 +16,36 @@ const swirlColors = {
   uC4: hexToRgb01(palette.teal),
 };
 
-export function useArtGrid(): ArtGrid & { readonly width: number; readonly height: number; readonly density: number } {
-  const { width, height } = useWindowDimensions();
+export interface CanvasSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+export type SizedArtGrid = ArtGrid & CanvasSize & { readonly density: number };
+
+/** The art grid for a canvas of `size` (default: the window), with the scene kept below `insetTop` pt. */
+export function useArtGrid(size?: CanvasSize | null, insetTop = 0): SizedArtGrid {
+  const win = useWindowDimensions();
+  const width = size?.width ?? win.width;
+  const height = size?.height ?? win.height;
   const density = PixelRatio.get();
-  return useMemo(() => ({ ...computeArtGrid(width, height, density), width, height, density }), [width, height, density]);
+  return useMemo(
+    () => ({ ...computeArtGrid(width, height, density, insetTop), width, height, density }),
+    [width, height, density, insetTop],
+  );
+}
+
+/**
+ * A canvas's own size from layout; null until the first layout, where callers fall back to the window. Attach the
+ * handler to a View around the Canvas: Skia ignores Canvas onLayout on the new architecture.
+ */
+export function useCanvasSize(): [CanvasSize | null, (e: LayoutChangeEvent) => void] {
+  const [size, setSize] = useState<CanvasSize | null>(null);
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setSize((prev) => (prev?.width === width && prev.height === height ? prev : { width, height }));
+  }, []);
+  return [size, onLayout];
 }
 
 /** Shared clock in seconds; frozen at 0 under Reduce Motion. */
@@ -32,9 +58,17 @@ export function useSceneTime() {
 /** 0 (scene) to ~0.5 (menus); 1 is near black. A shared value animates it, e.g. the welcome warm-up. */
 export type SwirlDim = number | SharedValue<number>;
 
+interface SwirlFillProps {
+  readonly art: ArtGrid;
+  readonly dim?: SwirlDim;
+  /** Swirl phase in seconds, for scenes that change its speed; defaults to the shared scene clock. */
+  readonly phase?: SharedValue<number>;
+}
+
 /** Swirl as a Skia <Fill>, for use inside a Canvas. */
-export function SwirlFill({ art, dim = 0 }: { readonly art: ArtGrid; readonly dim?: SwirlDim }) {
-  const time = useSceneTime();
+export function SwirlFill({ art, dim = 0, phase }: SwirlFillProps) {
+  const clock = useSceneTime();
+  const time = phase ?? clock;
   const uniforms = useDerivedValue(() => ({
     uRes: [grid.scene.w, grid.scene.h],
     uOrigin: [art.originX, art.originY],
@@ -52,10 +86,13 @@ export function SwirlFill({ art, dim = 0 }: { readonly art: ArtGrid; readonly di
 
 /** Standalone swirl backdrop behind RN content (menu preset). */
 export function Swirl({ dim }: { readonly dim?: SwirlDim }) {
-  const art = useArtGrid();
+  const [size, onLayout] = useCanvasSize();
+  const art = useArtGrid(size);
   return (
-    <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-      <SwirlFill art={art} dim={dim} />
-    </Canvas>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" onLayout={onLayout}>
+      <Canvas style={StyleSheet.absoluteFill}>
+        <SwirlFill art={art} dim={dim} />
+      </Canvas>
+    </View>
   );
 }

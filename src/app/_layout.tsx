@@ -48,7 +48,7 @@ function AppStack() {
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.surfaceDeep } }}>
       <Stack.Protected guard={onboarded}>
         <Stack.Screen name="index" />
-        <Stack.Screen name="menu-spike" />
+        <Stack.Screen name="(tabs)" />
       </Stack.Protected>
       <Stack.Protected guard={!onboarded}>
         <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
