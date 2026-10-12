@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 
 import { MenuPanel } from '@/components/MenuPanel';
 import { PixelButton } from '@/components/PixelButton';
+import { TextLink } from '@/components/TextLink';
 import { BulletList } from '@/onboarding/BulletList';
 import { useDraft } from '@/onboarding/draft';
 import { OnboardingScreen } from '@/onboarding/OnboardingScreen';
@@ -29,6 +30,7 @@ export default function AnalyticsStep() {
         <>
           <PixelButton label="Share usage stats" full onPress={() => answer(true)} />
           <PixelButton label="Don't share" full variant="quiet" onPress={() => answer(false)} />
+          <TextLink label="Read the privacy policy" onPress={() => router.push('/privacy')} />
         </>
       }>
       <PetAsks

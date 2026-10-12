@@ -54,6 +54,7 @@ function AppStack() {
         <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
         <Stack.Screen name="onboarding" />
       </Stack.Protected>
+      <Stack.Screen name="privacy" />
     </Stack>
   );
 }
